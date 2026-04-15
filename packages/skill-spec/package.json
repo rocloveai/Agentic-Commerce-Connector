@@ -1,0 +1,28 @@
+{
+  "name": "@acc/skill-spec",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Normative spec + shared types, EIP-712 signing, and JCS canonicalization for Agentic Commerce Connector skill packages",
+  "license": "MIT",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js"
+    },
+    "./schemas/*": "./schemas/*"
+  },
+  "files": [
+    "build",
+    "schemas",
+    "SPEC.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "viem": "^2.46.3"
+  }
+}

@@ -1,0 +1,104 @@
+# Render Blueprint — one-click deploy for Agentic Commerce Connector.
+#
+# Usage:
+#   1. Push this repo to GitHub.
+#   2. Render Dashboard → New → Blueprint → select this repo.
+#   3. Fill in the platform/payment secrets prompted (marked `sync: false` below).
+#   4. Render provisions Postgres + Web Service and injects DATABASE_URL.
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+databases:
+  - name: commerce-agent-db
+    plan: starter            # free | starter ($7/mo) | standard | pro
+    postgresMajorVersion: "16"
+    ipAllowList: []          # [] = internal-only; no public access
+
+services:
+  - type: web
+    name: commerce-agent
+    runtime: docker
+    plan: starter            # free tier sleeps after 15 min idle — avoid for webhooks
+    region: singapore        # match to your database region
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+
+    envVars:
+      # --- Database (auto-wired from the Postgres instance above) ---
+      - key: DATABASE_URL
+        fromDatabase:
+          name: commerce-agent-db
+          property: connectionString
+
+      # --- Transport / port ---
+      - key: TRANSPORT
+        value: http
+      - key: PORTAL_PORT
+        value: "10000"
+      - key: PORTAL_HOST
+        value: 0.0.0.0
+      - key: SELF_URL
+        sync: false          # set to your Render URL after first deploy, e.g. https://commerce-agent.onrender.com
+
+      # --- Platform + provider selection ---
+      - key: PLATFORM
+        value: shopify       # or: woocommerce
+      - key: PAYMENT_PROVIDER
+        value: nexus
+
+      # --- UCP cart token ---
+      - key: UCP_CART_TOKEN_SECRET
+        generateValue: true  # Render generates a secure random value once
+      - key: UCP_TOKEN_TTL_SECONDS
+        value: "900"
+
+      # --- Merchant identity ---
+      - key: MERCHANT_DID
+        sync: false
+      - key: MERCHANT_SIGNER_PRIVATE_KEY
+        sync: false
+      - key: MERCHANT_PAYMENT_ADDRESS
+        sync: false
+
+      # --- Nexus payment ---
+      - key: NEXUS_CORE_URL
+        value: https://api.nexus.platon.network
+      - key: CHECKOUT_BASE_URL
+        value: https://nexus.platon.network
+      - key: NEXUS_CHAIN_ID
+        value: "20250407"
+      - key: NEXUS_WEBHOOK_SECRET
+        sync: false
+
+      # --- Pricing ---
+      - key: PAYMENT_CURRENCY
+        value: XSGD
+      - key: CHECKOUT_FIXED_RATE
+        value: "1.00"
+      - key: CHECKOUT_RATE_LOCK_MINUTES
+        value: "5"
+
+      # --- Shopify (leave blank if PLATFORM=woocommerce) ---
+      - key: SHOPIFY_STORE_URL
+        sync: false
+      - key: SHOPIFY_STOREFRONT_TOKEN
+        sync: false
+      - key: SHOPIFY_ADMIN_TOKEN
+        sync: false
+      - key: SHOPIFY_API_VERSION
+        value: "2025-07"
+
+      # --- WooCommerce (leave blank if PLATFORM=shopify) ---
+      - key: WOO_BASE_URL
+        sync: false
+      - key: WOO_CONSUMER_KEY
+        sync: false
+      - key: WOO_CONSUMER_SECRET
+        sync: false
+      - key: WOO_API_VERSION
+        value: wc/v3
+
+      # --- Admin portal (optional) ---
+      - key: PORTAL_TOKEN
+        generateValue: true

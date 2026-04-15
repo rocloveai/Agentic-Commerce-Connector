@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acc.dev/schemas/manifest.schema.json",
+  "title": "ACC Skill Manifest",
+  "type": "object",
+  "required": [
+    "spec_version",
+    "merchant_address",
+    "platform",
+    "ucp_version",
+    "endpoint",
+    "payment_handlers",
+    "capabilities",
+    "content_hash",
+    "published_at",
+    "version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "spec_version": { "const": "acc-skill/1.0" },
+    "merchant_address": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{40}$"
+    },
+    "platform": { "type": "string", "minLength": 1 },
+    "ucp_version": { "type": "string", "minLength": 1 },
+    "endpoint": { "type": "string", "format": "uri" },
+    "payment_handlers": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "published_at": { "type": "string", "format": "date-time" },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" }
+  }
+}

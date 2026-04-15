@@ -1,0 +1,22 @@
+{
+  "name": "@acc/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "acc-skill CLI — generate, sign, publish, and verify ACC skill packages",
+  "license": "MIT",
+  "bin": {
+    "acc-skill": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/index.js",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@acc/skill-spec": "^0.1.0",
+    "viem": "^2.46.3"
+  }
+}

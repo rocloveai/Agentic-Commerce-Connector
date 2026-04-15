@@ -1,0 +1,31 @@
+{
+  "name": "@acc/connector",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "Agentic Commerce Connector — UCP/1.0 façade + platform adapters",
+  "license": "MIT",
+  "bin": {
+    "commerce-agent": "./build/server.js"
+  },
+  "files": [
+    "build",
+    "skill.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node build/server.js",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@acc/skill-spec": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "pg": "^8.13.0",
+    "viem": "^2.46.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.0"
+  }
+}

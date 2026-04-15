@@ -1,30 +1,20 @@
 {
-  "name": "commerce-agent",
-  "version": "0.2.0",
+  "name": "agentic-commerce-connector",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Open-source UCP/1.0 data-layer wrapper for traditional e-commerce + agent-facing skill toolchain",
+  "license": "MIT",
   "type": "module",
-  "description": "Agentic Commerce Connector — connect AI agents to any e-commerce platform via MCP + HTTP",
-  "bin": {
-    "commerce-agent": "./build/server.js"
-  },
-  "files": [
-    "build",
-    "skill.md"
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "build": "tsc",
-    "start": "node build/server.js",
-    "dev": "tsc --watch",
-    "test": "vitest",
-    "prepublishOnly": "npm run build"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
-    "pg": "^8.13.0",
-    "viem": "^2.46.3",
-    "zod": "^3.24.2"
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev": "npm run dev --workspace packages/connector",
+    "start": "npm run start --workspace packages/connector"
   },
   "devDependencies": {
-    "@types/pg": "^8.11.0",
     "@types/node": "^22.13.4",
     "typescript": "^5.7.3",
     "vitest": "^3.1.1"

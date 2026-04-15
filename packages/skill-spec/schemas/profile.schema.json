@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acc.dev/schemas/profile.schema.json",
+  "title": "ACC Merchant Profile",
+  "type": "object",
+  "required": ["display_name"],
+  "additionalProperties": false,
+  "properties": {
+    "display_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "description": { "type": "string", "maxLength": 2000 },
+    "logo_url": { "type": "string", "format": "uri" },
+    "category": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "maxItems": 20
+    },
+    "screenshots": {
+      "type": "array",
+      "items": { "type": "string", "format": "uri" },
+      "maxItems": 10
+    },
+    "social_links": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "format": "uri" }
+    }
+  }
+}
