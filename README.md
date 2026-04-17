@@ -54,24 +54,52 @@ Anyone can build a compatible marketplace against the public spec.
 
 ## Quick Start
 
+### One-liner install (macOS + Linux)
+
+```bash
+curl -fsSL https://get.xagenpay.com/install | sh
+```
+
+This drops the `acc` binary into `~/.acc/bin` and adds it to your PATH. No
+Node, no `npm install`, no clone. Supports:
+
+- `darwin-arm64` (Apple Silicon M1/M2/M3/M4)
+- `darwin-x64` (Intel Mac)
+- `linux-x64`
+- `linux-arm64`
+
+Once installed:
+
+```bash
+# 8-step interactive wizard — creates ~/.acc with config.json, .env,
+# encryption key, signer wallet, Shopify creds, SQLite schema, skill.md.
+acc init
+
+# Boot the connector (foreground; Ctrl-C to stop).
+acc start
+
+# In another terminal — prints install URL + QR, polls until install done.
+acc shopify connect --shop=<your-store>.myshopify.com
+
+# Edit the generated skill template, then publish to the marketplace.
+$EDITOR ~/.acc/skill/acc-skill.md
+acc publish
+
+# Verify + diagnose anytime.
+acc doctor
+acc upgrade
+```
+
+Pin a specific version: `curl -fsSL https://get.xagenpay.com/install | ACC_VERSION=v0.4.0 sh`
+
+### Install from source (contributors)
+
 ```bash
 git clone https://github.com/SELFVIBECODING/agentic-commerce-connector.git
 cd agentic-commerce-connector
 npm install && npm run build
-
-# 8-step interactive wizard — creates ./acc-data/ with config.json, .env,
-# encryption key, signer wallet, Shopify creds, SQLite schema, skill.md.
 npx acc init
-
-# Start the connector (reads ./acc-data/.env + ./acc-data/db/acc.sqlite).
-npm --workspace packages/connector start
-
-# In another terminal — prints install URL + QR, polls until install done.
-npx acc shopify connect --shop=<your-store>.myshopify.com
-
-# Edit the generated skill template, then publish to the marketplace.
-$EDITOR ./acc-data/skill/acc-skill.md
-npx acc publish
+npx acc start
 ```
 
 Full walkthrough: [docs/MERCHANT_ONBOARDING.md](./docs/MERCHANT_ONBOARDING.md).
@@ -103,10 +131,11 @@ docker compose up -d
   at-rest token encryption, SQLite + Postgres installation stores.
 - `packages/skill-spec/` — v0.1 types, EIP-712 typed data, JCS canonicalisation,
   JSON Schemas. Spec doc at `packages/skill-spec/SPEC.md`.
-- `packages/cli/` — `acc` binary shipped: init (8-step wizard), shopify connect,
-  wallet (show/new/import), publish (zero-arg), skill init, version, help.
-  Deferred to later phases: `acc start/stop/status/doctor`, `acc skill edit`,
-  `acc shopify status/disconnect`.
+- `packages/cli/` — `acc` binary shipped: init (8-step wizard), start, doctor,
+  upgrade, shopify connect, wallet (show/new/import), publish (zero-arg),
+  skill init, version, help. Cross-compiled with Bun (`bun build --compile`);
+  `bun:sqlite` is statically linked so no native addons ship. Deferred:
+  `acc stop/status`, `acc skill edit`, `acc shopify status/disconnect`.
 
 ## Documentation
 
@@ -114,6 +143,7 @@ docker compose up -d
 - CLI reference: [docs/CLI.md](./docs/CLI.md)
 - Skill spec: [docs/SKILL_SPEC.md](./docs/SKILL_SPEC.md)
 - UCP compliance notes: [docs/ucp-compliance.md](./docs/ucp-compliance.md)
+- Install site deploy (`get.xagenpay.com`): [docs/DEPLOY_INSTALL_SITE.md](./docs/DEPLOY_INSTALL_SITE.md)
 - Design + execution plans: [docs/plans/](./docs/plans/)
 
 ## License

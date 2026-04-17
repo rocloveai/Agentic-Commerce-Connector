@@ -6,7 +6,7 @@
 // read-only to detect success.
 // ---------------------------------------------------------------------------
 
-import Database from "better-sqlite3";
+import { openSqlite } from "@acc/connector/sqlite";
 import { existsSync } from "node:fs";
 import { resolveDataDir } from "../../shared/data-dir.js";
 import { loadConfig } from "../../shared/config-store.js";
@@ -95,24 +95,21 @@ async function pollUntilInstalled(
 
   process.stdout.write("Polling for installation…\n");
   while (now() < deadline) {
-    const installed = readInstalled(dbPath, shop);
+    const installed = await readInstalled(dbPath, shop);
     if (installed) return true;
     await sleep(POLL_INTERVAL_MS);
   }
   return false;
 }
 
-function readInstalled(dbPath: string, shop: string): boolean {
-  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+async function readInstalled(dbPath: string, shop: string): Promise<boolean> {
+  const db = await openSqlite(dbPath);
   try {
     const row = db
-      .prepare<
-        [string],
-        { installed_at: number; uninstalled_at: number | null }
-      >(
+      .prepare(
         "SELECT installed_at, uninstalled_at FROM shopify_installations WHERE shop_domain = ?",
       )
-      .get(shop);
+      .get([shop]) as { installed_at: number; uninstalled_at: number | null } | undefined;
     if (!row) return false;
     return row.uninstalled_at === null;
   } finally {

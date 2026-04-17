@@ -31,9 +31,11 @@ Wallet:
   acc wallet new --yes               (destructive)
   acc wallet import --key=0x...
 
-Lifecycle (Phase 9+):
-  acc start | stop | status
-  acc doctor
+Lifecycle:
+  acc start [--data-dir=PATH]        Boot the connector in the foreground.
+  acc doctor [--data-dir=PATH]       Verify config + reachability.
+  acc upgrade [--version=X.Y.Z]      Re-run the install script to update.
+  acc stop | status                  (Phase 9+)
 
 Meta:
   acc version

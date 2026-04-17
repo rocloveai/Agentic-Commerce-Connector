@@ -75,9 +75,15 @@ describe("route — nested wallet", () => {
   });
 });
 
-describe("route — placeholders", () => {
-  it.each(["start", "stop", "status", "doctor"])(
-    "surfaces placeholder for `%s`",
+describe("route — lifecycle", () => {
+  it("routes start / upgrade / doctor to dedicated handlers", () => {
+    expect(ok(["start"]).handler).toBe("start");
+    expect(ok(["upgrade"]).handler).toBe("upgrade");
+    expect(ok(["doctor"]).handler).toBe("doctor");
+  });
+
+  it.each(["stop", "status"])(
+    "surfaces placeholder for `%s` (Phase 9+)",
     (cmd) => {
       const r = ok([cmd]);
       expect(r.handler).toBe("placeholder");

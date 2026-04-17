@@ -1,0 +1,60 @@
+name: pages
+
+# Publishes the `get.xagenpay.com` install site to GitHub Pages.
+#
+# We deploy from `site/` (CNAME + landing page) but copy the canonical
+# `install.sh` in at build time so the repo has a single source of truth.
+#
+#   https://get.xagenpay.com/            → landing page (site/index.html)
+#   https://get.xagenpay.com/install     → install.sh
+#   https://get.xagenpay.com/install.sh  → install.sh (alias)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "install.sh"
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          set -eu
+          out=_site
+          mkdir -p "$out"
+          cp -r site/. "$out/"
+          # Canonical install script — exposed at two paths for convenience.
+          install -m 0644 install.sh "$out/install"
+          install -m 0644 install.sh "$out/install.sh"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

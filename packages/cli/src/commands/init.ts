@@ -6,6 +6,8 @@
 // step-by-step intent.
 // ---------------------------------------------------------------------------
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ensureDataDir, type DataDirLayout } from "../shared/data-dir.js";
 import {
   createPrompter,
@@ -48,7 +50,7 @@ export async function runInit(
 ): Promise<void> {
   const flags = parseFlags(args);
   const force = flags.has("force");
-  const dataDirArg = flags.get("data-dir") ?? "./acc-data";
+  const dataDirArg = flags.get("data-dir") ?? defaultDataDir();
 
   const io = opts.io ?? defaultPromptIO();
   const prompter = createPrompter(io);
@@ -187,8 +189,34 @@ function printFinaleSummary(cfg: AccConfig, layout: DataDirLayout): void {
       `  selfUrl  : ${cfg.selfUrl}\n` +
       `  wallet   : ${cfg.wallet?.address ?? "(not configured)"}\n` +
       `  skill    : ${cfg.skillMdPath}\n` +
-      `\nNext: npm --workspace packages/connector start\n`,
+      `\nNext: acc start   (or: acc doctor to verify setup)\n`,
   );
+}
+
+// When the CLI is installed globally (cwd is not a checked-out ACC repo), we
+// default the data dir to ~/.acc — single-user home-managed install, matching
+// OpenCode / brew / cargo conventions. Inside a repo checkout (package.json
+// at cwd declares @acc/cli or @acc/connector) we keep the legacy ./acc-data
+// so contributor workflows stay untouched.
+function defaultDataDir(): string {
+  const home = process.env.HOME || process.env.USERPROFILE;
+  if (!home) return "./acc-data";
+
+  const cwdPkg = join(process.cwd(), "package.json");
+  if (existsSync(cwdPkg)) {
+    try {
+      const name = JSON.parse(readFileSync(cwdPkg, "utf8"))?.name ?? "";
+      if (
+        typeof name === "string" &&
+        (name.startsWith("@acc/") || name === "agentic-commerce-connector")
+      ) {
+        return "./acc-data";
+      }
+    } catch {
+      // fall through to home default
+    }
+  }
+  return join(home, ".acc");
 }
 
 function nonInteractiveSeedFromEnv(): Partial<NonInteractiveSeed> | undefined {

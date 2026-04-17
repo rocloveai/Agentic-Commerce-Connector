@@ -12,6 +12,9 @@ import { runVersion } from "./commands/version.js";
 import { runPlaceholder } from "./commands/placeholder.js";
 import { runInit } from "./commands/init.js";
 import { runPublish } from "./commands/publish.js";
+import { runStart } from "./commands/start.js";
+import { runUpgrade } from "./commands/upgrade.js";
+import { runDoctor } from "./commands/doctor.js";
 import { runShopifyConnect } from "./commands/shopify/connect.js";
 import { runSkillInit } from "./commands/skill/init.js";
 import { runSkillEdit } from "./commands/skill/edit.js";
@@ -27,6 +30,9 @@ const HANDLERS: Record<HandlerKey, Handler> = {
   version: () => runVersion(),
   init: (args) => runInit(args),
   publish: (args) => runPublish(args),
+  start: (args) => runStart(args),
+  upgrade: (args) => runUpgrade(args),
+  doctor: (args) => runDoctor(args),
   "shopify.connect": (args) => runShopifyConnect(args),
   "skill.init": (args) => runSkillInit(args),
   "skill.edit": (args) => runSkillEdit(args),

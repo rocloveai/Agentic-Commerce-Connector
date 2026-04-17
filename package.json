@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
+    "build:binary": "bun run scripts/build-binary.ts",
     "test": "npm run test --workspaces --if-present",
     "dev": "npm run dev --workspace packages/connector",
     "start": "npm run start --workspace packages/connector"
