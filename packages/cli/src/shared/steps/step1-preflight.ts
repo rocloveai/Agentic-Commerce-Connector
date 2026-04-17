@@ -1,6 +1,17 @@
 import type { StepContext, StepOutcome } from "./context.js";
 
 export async function stepPreflight(_ctx: StepContext): Promise<StepOutcome> {
+  const isBun =
+    typeof (process as unknown as { versions?: Record<string, string> }).versions?.bun === "string";
+
+  // Under Bun (the distribution path) sqlite is statically linked into the
+  // binary via bun:sqlite — nothing to resolve. Under Node (dev/tests) we
+  // still require better-sqlite3 to be installable, because that's the
+  // driver the Node fallback uses.
+  if (isBun) {
+    return { applied: true, summary: `Bun ${process.versions.bun} + bun:sqlite OK` };
+  }
+
   const raw = process.versions.node;
   const major = Number(raw.split(".")[0]);
   if (Number.isNaN(major) || major < 20) {
@@ -8,7 +19,6 @@ export async function stepPreflight(_ctx: StepContext): Promise<StepOutcome> {
       `acc init requires Node >= 20 (found ${raw}). Upgrade Node and re-run.`,
     );
   }
-  // better-sqlite3 resolvability — caught here so step 7 can trust import.
   try {
     await import("better-sqlite3");
   } catch (err) {

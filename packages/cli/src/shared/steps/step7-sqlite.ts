@@ -8,7 +8,7 @@
 // automated drift check; for now, a manual keep-in-sync comment is enough.
 // ---------------------------------------------------------------------------
 
-import Database from "better-sqlite3";
+import { openSqlite } from "@acc/connector/sqlite";
 import type { StepContext, StepOutcome } from "./context.js";
 
 const SCHEMA_SQL = `
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS shopify_installations (
 `;
 
 export async function stepSqlite(ctx: StepContext): Promise<StepOutcome> {
-  const db = new Database(ctx.layout.dbFile);
+  const db = await openSqlite(ctx.layout.dbFile);
   try {
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");

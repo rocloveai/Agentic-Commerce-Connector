@@ -10,11 +10,16 @@
 // (unix ms) and key_version. Same DDL works verbatim on Postgres (with
 // BIGINT as a finer type for ms), so the Pg impl can reuse most of the
 // row-mapping code unchanged.
+//
+// Driver selection lives in ../../../services/db/sqlite.ts: bun:sqlite under
+// the shipped binary, better-sqlite3 under Node for dev/tests.
 // ---------------------------------------------------------------------------
 
-import Database from "better-sqlite3";
-import type { Database as SqliteDb } from "better-sqlite3";
-import { encryptToken, decryptToken } from "../../../services/crypto/token-cipher.js";
+import { openSqlite, type SqliteDatabase } from "../../../services/db/sqlite.js";
+import {
+  encryptToken,
+  decryptToken,
+} from "../../../services/crypto/token-cipher.js";
 import type { ShopInstallation } from "./types.js";
 import type { InstallationStore } from "./installation-store.js";
 
@@ -54,22 +59,22 @@ export interface SqliteInstallationStore extends InstallationStore {
   close(): void;
 }
 
-export function createSqliteInstallationStore(
+export async function createSqliteInstallationStore(
   opts: SqliteInstallationStoreOptions,
-): SqliteInstallationStore {
+): Promise<SqliteInstallationStore> {
   if (!opts.encryptionKey) {
     throw new Error(
       "[SqliteInstallationStore] encryptionKey is required. This store never writes tokens in plaintext.",
     );
   }
-  const db: SqliteDb = new Database(opts.dbPath);
+  const db: SqliteDatabase = await openSqlite(opts.dbPath);
   // WAL gives us concurrent readers + one writer with no extra config.
   // `:memory:` ignores WAL silently, so the pragma is safe for tests too.
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA_SQL);
 
-  const getStmt = db.prepare<[string]>(
+  const getStmt = db.prepare(
     "SELECT * FROM shopify_installations WHERE shop_domain = ?",
   );
   const upsertStmt = db.prepare(
@@ -84,7 +89,7 @@ export function createSqliteInstallationStore(
        uninstalled_at   = excluded.uninstalled_at,
        key_version      = excluded.key_version`,
   );
-  const uninstallStmt = db.prepare<[number, string]>(
+  const uninstallStmt = db.prepare(
     "UPDATE shopify_installations SET uninstalled_at = ? WHERE shop_domain = ?",
   );
   const listStmt = db.prepare("SELECT * FROM shopify_installations");
@@ -104,7 +109,7 @@ export function createSqliteInstallationStore(
 
   return {
     async get(shop: string): Promise<ShopInstallation | null> {
-      const row = getStmt.get(shop) as Row | undefined;
+      const row = getStmt.get([shop]) as Row | undefined;
       return row ? rowToInstallation(row) : null;
     },
 
@@ -124,7 +129,7 @@ export function createSqliteInstallationStore(
     },
 
     async markUninstalled(shop: string, at: number): Promise<void> {
-      uninstallStmt.run(at, shop);
+      uninstallStmt.run([at, shop]);
     },
 
     async list(): Promise<readonly ShopInstallation[]> {

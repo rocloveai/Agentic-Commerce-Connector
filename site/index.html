@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>acc — install</title>
+    <meta
+      name="description"
+      content="One-liner installer for the Agentic Commerce Connector (acc)."
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #111;
+        --muted: #666;
+        --bg: #fafafa;
+        --code-bg: #111;
+        --code-fg: #f5f5f5;
+        --accent: #0b74de;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #f5f5f5;
+          --muted: #9aa0a6;
+          --bg: #0d0f12;
+          --code-bg: #000;
+          --code-fg: #e8e8e8;
+          --accent: #5aa9ff;
+        }
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+          sans-serif;
+        line-height: 1.5;
+      }
+      main {
+        max-width: 720px;
+        margin: 64px auto;
+        padding: 0 24px;
+      }
+      h1 {
+        font-size: 2rem;
+        margin: 0 0 8px;
+        letter-spacing: -0.01em;
+      }
+      .tagline {
+        color: var(--muted);
+        margin-bottom: 32px;
+      }
+      pre {
+        background: var(--code-bg);
+        color: var(--code-fg);
+        padding: 16px 20px;
+        border-radius: 10px;
+        overflow-x: auto;
+        font-size: 0.95rem;
+        font-family:
+          "SF Mono", ui-monospace, Menlo, Consolas, "Liberation Mono",
+          monospace;
+      }
+      code {
+        font-family:
+          "SF Mono", ui-monospace, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        background: rgba(127, 127, 127, 0.15);
+        padding: 0.05em 0.35em;
+        border-radius: 4px;
+      }
+      pre code {
+        background: transparent;
+        padding: 0;
+      }
+      a {
+        color: var(--accent);
+      }
+      h2 {
+        margin-top: 40px;
+        font-size: 1.1rem;
+      }
+      footer {
+        margin-top: 48px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .platforms {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: -12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>acc</h1>
+      <p class="tagline">
+        Agentic Commerce Connector — UCP/1.0 data-layer wrapper for traditional
+        e-commerce.
+      </p>
+
+      <pre><code>curl -fsSL https://get.xagenpay.com/install | sh</code></pre>
+      <p class="platforms">
+        macOS (arm64, x64) · Linux (x64, arm64) · no Node, no clone required.
+      </p>
+
+      <h2>Pin a version</h2>
+      <pre><code>curl -fsSL https://get.xagenpay.com/install | ACC_VERSION=v0.4.0 sh</code></pre>
+
+      <h2>After install</h2>
+      <pre><code>acc init      # 8-step wizard
+acc start     # boot the connector
+acc doctor    # diagnose
+acc upgrade   # update in place</code></pre>
+
+      <footer>
+        Source &amp; docs:
+        <a
+          href="https://github.com/SELFVIBECODING/agentic-commerce-connector"
+          >github.com/SELFVIBECODING/agentic-commerce-connector</a
+        >
+      </footer>
+    </main>
+  </body>
+</html>

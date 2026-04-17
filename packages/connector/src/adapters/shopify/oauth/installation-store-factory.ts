@@ -72,7 +72,7 @@ export async function selectInstallationStore(
     : resolve(process.cwd(), opts.dataDir);
   const dbPath = `${resolvedDataDir}/db/acc.sqlite`;
   mkdirSync(dirname(dbPath), { recursive: true });
-  const store = createSqliteInstallationStore({
+  const store = await createSqliteInstallationStore({
     dbPath,
     encryptionKey: opts.encryptionKey,
   });

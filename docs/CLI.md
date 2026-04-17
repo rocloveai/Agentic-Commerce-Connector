@@ -8,13 +8,25 @@ one-line warning. New workflows should use `acc`.
 
 ## Install
 
-The CLI ships as `@acc/cli` inside the monorepo. After `npm install && npm
-run build`, invoke via `npx acc …` or add `packages/cli/build` to `PATH`.
+**Recommended — single-binary install (macOS + Linux):**
+
+```bash
+curl -fsSL https://get.xagenpay.com/install | sh
+```
+
+Installs to `~/.acc/bin/acc` and appends to your shell PATH. Env overrides:
+`ACC_VERSION` pins a release tag; `ACC_INSTALL_DIR` redirects the target.
+
+**From source (contributors):** clone the monorepo, `npm install && npm run
+build`, then invoke via `npx acc …` or add `packages/cli/build` to `PATH`.
 
 ## Command tree
 
 ```
-acc init [--data-dir=./acc-data] [--force] [--non-interactive]
+acc init [--data-dir=PATH] [--force] [--non-interactive]
+acc start [--data-dir=PATH]
+acc doctor [--data-dir=PATH]
+acc upgrade [--version=X.Y.Z]
 acc shopify connect --shop=<X>.myshopify.com [--print-url-only]
 acc skill init [--out=PATH] [--force]
 acc skill edit                      (Phase 9+)
@@ -27,10 +39,12 @@ acc version
 acc help [topic]
 
 # Placeholders (Phase 9+):
-acc start | stop | status
-acc doctor
+acc stop | status
 acc shopify status | disconnect
 ```
+
+Default `--data-dir`: `~/.acc` when the CLI is installed globally, `./acc-data`
+when running from a monorepo checkout (detected by the cwd `package.json`).
 
 ## `acc init`
 

@@ -17,6 +17,9 @@ export type HandlerKey =
   | "version"
   | "init"
   | "publish"
+  | "start"
+  | "upgrade"
+  | "doctor"
   | "shopify.connect"
   | "skill.init"
   | "skill.edit"
@@ -26,12 +29,7 @@ export type HandlerKey =
   | "wallet.import"
   | "placeholder";
 
-const PLACEHOLDERS = new Set([
-  "start",
-  "stop",
-  "status",
-  "doctor",
-]);
+const PLACEHOLDERS = new Set(["stop", "status"]);
 
 const SHOPIFY_PLACEHOLDERS = new Set(["status", "disconnect"]);
 
@@ -56,6 +54,9 @@ export function route(argv: readonly string[]): RouteResult {
 
   if (first === "init") return { handler: "init", args: rest };
   if (first === "publish") return { handler: "publish", args: rest };
+  if (first === "start") return { handler: "start", args: rest };
+  if (first === "upgrade") return { handler: "upgrade", args: rest };
+  if (first === "doctor") return { handler: "doctor", args: rest };
 
   if (PLACEHOLDERS.has(first)) {
     return { handler: "placeholder", args: [first, ...rest] };
