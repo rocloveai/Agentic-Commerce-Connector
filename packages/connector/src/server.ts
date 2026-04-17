@@ -12,6 +12,8 @@ import {
   registerRestHandlers,
   registerWebhookHandler,
   registerUcpDeps,
+  registerShopifyOAuthRouter,
+  registerShopifyWebhookRouter,
 } from "./portal.js";
 import { loadCartTokenConfig } from "./ucp/cart-token.js";
 import type { UcpPaymentHandlerT } from "./ucp/types.js";
@@ -35,6 +37,11 @@ import {
   createProductCache,
   validateShopifyConfig,
 } from "./adapters/shopify/index.js";
+import { createInMemoryStateStore } from "./adapters/shopify/oauth/state.js";
+import { selectInstallationStore } from "./adapters/shopify/oauth/installation-store-factory.js";
+import { createShopifyOAuthRouter } from "./adapters/shopify/oauth/routes.js";
+import { createShopifyWebhookRouter } from "./adapters/shopify/oauth/webhook-handler.js";
+import type { OAuthConfig } from "./adapters/shopify/oauth/types.js";
 import type { ProductCache } from "./adapters/shopify/product-cache.js";
 import {
   createWooCommerceAdapters,
@@ -56,6 +63,15 @@ interface Adapters {
 function createAdaptersForConfig(config: Config): Adapters {
   switch (config.platform) {
     case "shopify": {
+      // OAuth-mode credentials are minted at install time and persisted
+      // separately (see docs/plans/2026-04-16-shopify-oauth-design.md). Until
+      // Phase 3 of that rollout plumbs the DB-backed installation into the
+      // adapter factory, refuse to start so the operator gets a clear signal.
+      if (config.mode === "oauth") {
+        throw new Error(
+          "[Adapters/Shopify] OAuth mode is configured (SHOPIFY_CLIENT_ID is set) but the adapter layer has not been wired to read installations from storage yet. This is Phase 3 of the Shopify OAuth rollout. To use the connector today, unset SHOPIFY_CLIENT_ID and provide SHOPIFY_STOREFRONT_TOKEN + SHOPIFY_ADMIN_TOKEN (manual mode).",
+        );
+      }
       const shopifyConfig = validateShopifyConfig({
         SHOPIFY_STORE_URL: config.shopifyStoreUrl,
         SHOPIFY_STOREFRONT_TOKEN: config.shopifyStorefrontToken,
@@ -92,6 +108,12 @@ function createAdaptersForConfig(config: Config): Adapters {
 const config = loadConfig();
 const transportMode = process.env.TRANSPORT ?? "stdio";
 
+// Shopify OAuth mode defers adapter construction until an installation exists
+// (see docs/plans/2026-04-16-shopify-oauth-design.md). In this state we boot
+// a minimal portal that can accept the install flow, and short-circuit every
+// adapter-dependent subsystem.
+const isOAuthOnly = config.platform === "shopify" && config.mode === "oauth";
+
 // Set order prefix based on platform
 const ORDER_PREFIX_MAP: Record<string, string> = {
   shopify: "SHP",
@@ -106,14 +128,27 @@ if (config.databaseUrl) {
   console.error("Warning: DATABASE_URL not set. Using in-memory storage only.");
 }
 
-// Create adapters via factory
-const { catalog, merchant, productCache } = createAdaptersForConfig(config);
+// Create adapters via factory — in OAuth-only mode we skip this: no credentials
+// exist yet. Downstream handlers that touch `catalog` / `merchant` are never
+// registered in this mode, so the null values never get read at runtime.
+// Phase 5 of the OAuth rollout replaces this shim with a real lookup against
+// the installation store.
+const adapters = isOAuthOnly
+  ? ({
+      catalog: null as unknown as CatalogAdapter,
+      merchant: null as MerchantAdapter | null,
+      productCache: createProductCache(),
+    } as Adapters)
+  : createAdaptersForConfig(config);
+const { catalog, merchant, productCache } = adapters;
 
-// Start reconciler
-startReconciler({
-  nexusCoreUrl: config.nexusCoreUrl,
-  merchantDid: config.merchantDid,
-});
+// Reconciler — no work to do until an adapter exists.
+if (!isOAuthOnly) {
+  startReconciler({
+    nexusCoreUrl: config.nexusCoreUrl,
+    merchantDid: config.merchantDid,
+  });
+}
 
 // Register webhook handler
 registerWebhookHandler(async (_config, rawBody, sig, ts) => {
@@ -592,7 +627,79 @@ async function registerWithNexusCore(): Promise<void> {
   }
 }
 
+function buildOAuthConfigFromEnv(): OAuthConfig {
+  if (config.platform !== "shopify" || config.mode !== "oauth") {
+    throw new Error(
+      "[Server] buildOAuthConfigFromEnv called outside Shopify OAuth mode.",
+    );
+  }
+  const selfUrl = config.selfUrl || `http://localhost:${config.portalPort}`;
+  const derivedRedirect =
+    config.shopifyOAuthRedirect ||
+    `${selfUrl.replace(/\/+$/, "")}/auth/shopify/callback`;
+  return {
+    clientId: config.shopifyClientId,
+    clientSecret: config.shopifyClientSecret,
+    scopes: config.shopifyOAuthScopes,
+    redirectUri: derivedRedirect,
+    apiVersion: config.shopifyApiVersion,
+  };
+}
+
+async function startHttpModeOAuthOnly(): Promise<void> {
+  // Minimal boot: only the OAuth install/callback/status routes + /health +
+  // dashboard. No UCP, no MCP, no REST — those all need an adapter that
+  // Phase 5 will plumb through the installation store.
+  const oauthConfig = buildOAuthConfigFromEnv();
+  const selfUrl = config.selfUrl || `http://localhost:${config.portalPort}`;
+  const stateStore = createInMemoryStateStore();
+  const storage = await selectInstallationStore({
+    encryptionKey: config.accEncryptionKey,
+    databaseUrl: config.databaseUrl,
+    dataDir: process.env.ACC_DATA_DIR ?? "./acc-data",
+  });
+  const router = createShopifyOAuthRouter({
+    oauthConfig,
+    stateStore,
+    installationStore: storage.store,
+    selfUrl,
+    adminBearer: config.portalToken,
+  });
+  registerShopifyOAuthRouter(router);
+  if (!config.portalToken) {
+    console.error(
+      "[Server] PORTAL_TOKEN is not set — /admin/shopify will return 503 until you set it.",
+    );
+  }
+
+  const webhookRouter = createShopifyWebhookRouter({
+    oauthConfig,
+    installationStore: storage.store,
+  });
+  registerShopifyWebhookRouter(webhookRouter);
+
+  startPortal(config);
+  console.error(
+    `Commerce Agent started (HTTP, OAuth-only, port ${config.portalPort})`,
+  );
+  console.error(`  Storage:  ${storage.describe}`);
+  console.error(
+    `  Install:  ${oauthConfig.redirectUri.replace("/callback", "/install")}?shop=<your-shop>.myshopify.com`,
+  );
+  console.error(
+    `  Status:   http://localhost:${config.portalPort}/admin/shopify/installed`,
+  );
+  console.error(
+    "  (UCP / MCP / REST are disabled until Phase 5 wires adapters to the installation store.)",
+  );
+}
+
 async function startHttpMode(): Promise<void> {
+  if (isOAuthOnly) {
+    await startHttpModeOAuthOnly();
+    return;
+  }
+
   // Register REST API handlers (primary interface)
   registerRestHandlers({
     searchProducts: handleSearchProducts,

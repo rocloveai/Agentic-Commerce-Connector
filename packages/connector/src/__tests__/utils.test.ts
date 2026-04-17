@@ -190,10 +190,13 @@ describe("convertToStablecoin", () => {
     selfUrl: "http://localhost:10000",
     portalToken: "",
     storeUrl: "https://store.myshopify.com",
+    mode: "manual",
     shopifyStoreUrl: "https://store.myshopify.com",
     shopifyStorefrontToken: "token",
     shopifyAdminToken: "",
     shopifyApiVersion: "2025-07",
+    accEncryptionKey: "",
+    accSkillMdPath: "./acc-data/skill/acc-skill.md",
     checkoutBaseUrl: "https://checkout.test.com",
     paymentCurrency: "XSGD",
     fixedRate: 1.0,
@@ -319,7 +322,7 @@ describe("loadConfig", () => {
 
     expect(config.platform).toBe("shopify");
     expect(config.storeUrl).toBe("https://my-store.myshopify.com");
-    if (config.platform === "shopify") {
+    if (config.platform === "shopify" && config.mode === "manual") {
       expect(config.shopifyStoreUrl).toBe("https://my-store.myshopify.com");
       expect(config.shopifyStorefrontToken).toBe("sf_token");
       expect(config.shopifyAdminToken).toBe("admin_token");

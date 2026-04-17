@@ -10,6 +10,8 @@ import { fileURLToPath } from "node:url";
 import type { Config } from "./config.js";
 import type { ShippingAddress, WebhookPayload } from "./types.js";
 import { handleUcpRoute, type UcpDeps } from "./ucp/routes.js";
+import type { ShopifyOAuthRouter } from "./adapters/shopify/oauth/routes.js";
+import type { ShopifyWebhookRouter } from "./adapters/shopify/oauth/webhook-handler.js";
 
 const AGENT_NAME = "Commerce Agent";
 const startedAt = Date.now();
@@ -77,6 +79,24 @@ let ucpDeps: UcpDeps | null = null;
 
 export function registerUcpDeps(deps: UcpDeps): void {
   ucpDeps = deps;
+}
+
+// ── Shopify OAuth router (registered only in OAuth mode) ────────────────────
+
+let shopifyOAuthRouter: ShopifyOAuthRouter | null = null;
+
+export function registerShopifyOAuthRouter(router: ShopifyOAuthRouter): void {
+  shopifyOAuthRouter = router;
+}
+
+// ── Shopify webhook router (registered only in OAuth mode) ──────────────────
+
+let shopifyWebhookRouter: ShopifyWebhookRouter | null = null;
+
+export function registerShopifyWebhookRouter(
+  router: ShopifyWebhookRouter,
+): void {
+  shopifyWebhookRouter = router;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -361,6 +381,25 @@ async function handleRequest(
     return;
   }
 
+  // Shopify OAuth install / callback / post-install landing page. Only
+  // registered in OAuth mode (see server.ts); silently falls through to 404
+  // otherwise so the routes don't leak in manual-mode deployments.
+  if (
+    shopifyOAuthRouter &&
+    (path.startsWith("/auth/shopify/") || path.startsWith("/admin/shopify/"))
+  ) {
+    const handled = await shopifyOAuthRouter(req, res);
+    if (handled) return;
+  }
+
+  // Shopify-delivered webhooks (app/uninstalled + GDPR topics). NOTE: uses
+  // Shopify's `client_secret` to verify the HMAC — a different secret from
+  // the Nexus payment webhook handled on /webhook further down. Do not mix.
+  if (shopifyWebhookRouter && path.startsWith("/webhooks/shopify/")) {
+    const handled = await shopifyWebhookRouter(req, res);
+    if (handled) return;
+  }
+
   // MCP Streamable HTTP endpoint
   if (path === "/mcp") {
     if (!mcpHandler) {
@@ -409,6 +448,28 @@ async function handleRequest(
       sendText(res, content, "text/markdown; charset=utf-8");
     } catch {
       sendJson(res, 500, { error: "skill.md not found" });
+    }
+    return;
+  }
+
+  // Merchant-owned marketplace skill file, self-hosted. This is what the
+  // zero-argument `acc publish` points to when the operator doesn't supply
+  // `--url=`. We stream the raw bytes verbatim so the server-side sha256
+  // matches what the CLI signed over.
+  if (path === "/.well-known/acc-skill.md" && req.method === "GET") {
+    try {
+      const bytes = readFileSync(config.accSkillMdPath);
+      res.writeHead(200, {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "Content-Length": String(bytes.length),
+        "Access-Control-Allow-Origin": "*",
+      });
+      res.end(bytes);
+    } catch {
+      sendJson(res, 404, {
+        error: "acc-skill.md not found",
+        hint: `No file at ${config.accSkillMdPath}. Run \`acc skill init\` or set ACC_SKILL_MD_PATH.`,
+      });
     }
     return;
   }

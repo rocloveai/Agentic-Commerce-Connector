@@ -13,6 +13,8 @@ export {
   type PlatformType,
   type CommerceEnv,
   type ShopifyEnv,
+  type ShopifyManualEnv,
+  type ShopifyOAuthEnv,
   type WooCommerceEnv,
   type PaymentProviderType,
   type NexusPaymentEnv,

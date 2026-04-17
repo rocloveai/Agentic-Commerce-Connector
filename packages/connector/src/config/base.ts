@@ -32,6 +32,21 @@ export interface BaseConfig {
 
   /** Store URL used by the active adapter (mirrored here for logging). */
   readonly storeUrl: string;
+
+  /**
+   * AES-256-GCM hex-encoded key (64 chars = 32 bytes) used to encrypt Shopify
+   * admin/storefront tokens at rest. Required only in Shopify OAuth mode;
+   * manual-token mode leaves this empty. Cross-validation lives in loadConfig.
+   */
+  readonly accEncryptionKey: string;
+
+  /**
+   * Filesystem path to the skill markdown file the connector self-hosts at
+   * `/.well-known/acc-skill.md`. Defaults to `<ACC_DATA_DIR>/skill/acc-skill.md`,
+   * matching the `acc init` wizard layout. If the file doesn't exist, the
+   * route returns 404; nothing else cares.
+   */
+  readonly accSkillMdPath: string;
 }
 
 function parsePort(raw: string | undefined, fallback: number): number {
@@ -48,18 +63,18 @@ export function loadBaseConfig(
   storeUrl: string,
 ): BaseConfig {
   return {
-    merchantDid:
-      env.MERCHANT_DID ?? "did:example:unknown-merchant",
+    merchantDid: env.MERCHANT_DID ?? "did:example:unknown-merchant",
     portalPort: parsePort(env.PORTAL_PORT, 10000),
     databaseUrl: env.DATABASE_URL ?? "",
     selfUrl: env.SELF_URL || "http://commerce-agent:10000",
     portalToken: env.PORTAL_TOKEN ?? "",
     paymentCurrency: env.PAYMENT_CURRENCY ?? "XSGD",
     fixedRate: parseFloat(env.CHECKOUT_FIXED_RATE ?? "1.00"),
-    rateLockMinutes: parseInt(
-      env.CHECKOUT_RATE_LOCK_MINUTES ?? "5",
-      10,
-    ),
+    rateLockMinutes: parseInt(env.CHECKOUT_RATE_LOCK_MINUTES ?? "5", 10),
     storeUrl,
+    accEncryptionKey: env.ACC_ENCRYPTION_KEY ?? "",
+    accSkillMdPath:
+      env.ACC_SKILL_MD_PATH ??
+      `${env.ACC_DATA_DIR ?? "./acc-data"}/skill/acc-skill.md`,
   };
 }
