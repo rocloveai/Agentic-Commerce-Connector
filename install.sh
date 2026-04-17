@@ -14,12 +14,12 @@
 # Env overrides:
 #   ACC_VERSION       Pin a specific release tag (e.g. v0.4.0). Default: latest.
 #   ACC_INSTALL_DIR   Target directory. Default: $HOME/.acc/bin.
-#   ACC_REPO          GitHub <owner>/<repo>. Default: SELFVIBECODING/agentic-commerce-connector.
+#   ACC_REPO          GitHub <owner>/<repo>. Default: rocloveai/Agentic-Commerce-Connector.
 # ---------------------------------------------------------------------------
 
 set -eu
 
-REPO="${ACC_REPO:-SELFVIBECODING/agentic-commerce-connector}"
+REPO="${ACC_REPO:-rocloveai/Agentic-Commerce-Connector}"
 INSTALL_DIR="${ACC_INSTALL_DIR:-$HOME/.acc/bin}"
 VERSION="${ACC_VERSION:-latest}"
 
