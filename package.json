@@ -6,10 +6,12 @@
   "license": "MIT",
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/skill-spec",
+    "packages/connector",
+    "packages/cli"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @acc/skill-spec && npm run build -w @acc/connector && npm run build -w @acc/cli",
     "build:binary": "bun run scripts/build-binary.ts",
     "test": "npm run test --workspaces --if-present",
     "dev": "npm run dev --workspace packages/connector",
