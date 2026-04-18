@@ -57,18 +57,19 @@ jobs:
         run: npm run build
 
       - name: Compile binary (${{ matrix.target }})
+        # Bun's `--compile` automatically applies an ad-hoc signature on
+        # macOS when run on a macOS host — that's why we route darwin
+        # targets to macos-* runners. Don't try to re-sign: running
+        # `codesign --force` over Bun's own signature fails with
+        # "invalid or unsupported format" because Bun's single-file
+        # binary appends the bundle payload after the Mach-O, which
+        # breaks `codesign`'s load-command walk on an already-signed
+        # file.
         run: bun run scripts/build-binary.ts ${{ matrix.target }}
 
-      - name: Ad-hoc sign (macOS only)
-        # Bun compile produces an unsigned Mach-O. macOS SIGKILLs unsigned
-        # binaries via amfid. `codesign --sign -` applies an ad-hoc
-        # signature, which is enough for Gatekeeper-permissive execution
-        # of user-installed CLIs (the same approach Homebrew bottles take
-        # for non-notarized binaries).
+      - name: Verify macOS signature
         if: startsWith(matrix.target, 'darwin-')
-        run: |
-          codesign --sign - --force --deep "dist/binaries/acc-${{ matrix.target }}"
-          codesign --verify --verbose "dist/binaries/acc-${{ matrix.target }}" || true
+        run: codesign --verify --verbose "dist/binaries/acc-${{ matrix.target }}" || true
 
       - name: Package tarball
         run: |

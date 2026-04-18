@@ -88,14 +88,15 @@ install_binary() {
     mv "$tmp/acc" "$INSTALL_DIR/acc"
     chmod +x "$INSTALL_DIR/acc"
 
-    # macOS hardening: unsigned Mach-O gets SIGKILL'd on first run via
-    # amfid. Even binaries built on macOS runners can lose their ad-hoc
-    # signature after tar/untar. And Gatekeeper flags curl-downloaded
-    # files with com.apple.quarantine. Fix both unconditionally — silent
-    # no-op on Linux and on already-clean binaries.
+    # macOS Gatekeeper flags curl-downloaded files with quarantine, which
+    # can block the first run. Strip it. The binary itself is ad-hoc
+    # signed by Bun at build time on our macOS runner, so no extra
+    # codesign step is needed (and would in fact fail — running `codesign
+    # --force` over Bun's compiled single-file executable breaks with
+    # "invalid or unsupported format" because the bundle payload appended
+    # after the Mach-O confuses codesign's load-command walk).
     if [ "$(uname -s)" = "Darwin" ]; then
         xattr -d com.apple.quarantine "$INSTALL_DIR/acc" 2>/dev/null || true
-        codesign --sign - --force --deep "$INSTALL_DIR/acc" 2>/dev/null || true
     fi
 }
 
