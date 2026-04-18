@@ -88,13 +88,14 @@ install_binary() {
     mv "$tmp/acc" "$INSTALL_DIR/acc"
     chmod +x "$INSTALL_DIR/acc"
 
-    # macOS Gatekeeper flags anything downloaded via curl with
-    # `com.apple.quarantine` and SIGKILLs unsigned binaries on first run.
-    # Strip the attribute so `acc version` works out of the box. Silent
-    # no-op on Linux (xattr isn't present) and on binaries that were never
-    # quarantined (idempotent).
+    # macOS hardening: unsigned Mach-O gets SIGKILL'd on first run via
+    # amfid. Even binaries built on macOS runners can lose their ad-hoc
+    # signature after tar/untar. And Gatekeeper flags curl-downloaded
+    # files with com.apple.quarantine. Fix both unconditionally — silent
+    # no-op on Linux and on already-clean binaries.
     if [ "$(uname -s)" = "Darwin" ]; then
         xattr -d com.apple.quarantine "$INSTALL_DIR/acc" 2>/dev/null || true
+        codesign --sign - --force --deep "$INSTALL_DIR/acc" 2>/dev/null || true
     fi
 }
 

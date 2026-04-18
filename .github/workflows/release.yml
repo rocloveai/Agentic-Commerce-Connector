@@ -22,15 +22,18 @@ permissions:
 jobs:
   build:
     name: build (${{ matrix.target }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - darwin-arm64
-          - darwin-x64
-          - linux-x64
-          - linux-arm64
+        include:
+          # macOS targets on macOS runners — Linux can't produce a
+          # properly ad-hoc-signed Mach-O; unsigned darwin binaries get
+          # SIGKILL'd by amfid on modern macOS.
+          - { target: darwin-arm64, runner: macos-14 }
+          - { target: darwin-x64,   runner: macos-13 }
+          - { target: linux-x64,    runner: ubuntu-latest }
+          - { target: linux-arm64,  runner: ubuntu-latest }
     steps:
       - uses: actions/checkout@v4
 
@@ -55,6 +58,17 @@ jobs:
 
       - name: Compile binary (${{ matrix.target }})
         run: bun run scripts/build-binary.ts ${{ matrix.target }}
+
+      - name: Ad-hoc sign (macOS only)
+        # Bun compile produces an unsigned Mach-O. macOS SIGKILLs unsigned
+        # binaries via amfid. `codesign --sign -` applies an ad-hoc
+        # signature, which is enough for Gatekeeper-permissive execution
+        # of user-installed CLIs (the same approach Homebrew bottles take
+        # for non-notarized binaries).
+        if: startsWith(matrix.target, 'darwin-')
+        run: |
+          codesign --sign - --force --deep "dist/binaries/acc-${{ matrix.target }}"
+          codesign --verify --verbose "dist/binaries/acc-${{ matrix.target }}" || true
 
       - name: Package tarball
         run: |
