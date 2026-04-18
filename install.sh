@@ -87,6 +87,15 @@ install_binary() {
 
     mv "$tmp/acc" "$INSTALL_DIR/acc"
     chmod +x "$INSTALL_DIR/acc"
+
+    # macOS Gatekeeper flags anything downloaded via curl with
+    # `com.apple.quarantine` and SIGKILLs unsigned binaries on first run.
+    # Strip the attribute so `acc version` works out of the box. Silent
+    # no-op on Linux (xattr isn't present) and on binaries that were never
+    # quarantined (idempotent).
+    if [ "$(uname -s)" = "Darwin" ]; then
+        xattr -d com.apple.quarantine "$INSTALL_DIR/acc" 2>/dev/null || true
+    fi
 }
 
 # ── Ensure install dir is on PATH ───────────────────────────────────────────
