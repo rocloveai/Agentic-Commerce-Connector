@@ -1,14 +1,11 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+// Inline JSON import so the version string is baked into the compiled
+// binary at build time. Bun's `--compile` virtual FS does NOT ship the
+// original package.json alongside, so the prior `readFileSync` approach
+// returned ENOENT in production.
+import pkg from "../../package.json" with { type: "json" };
 
 export function getVersion(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  // build layout: build/commands/version.js → ../../package.json
-  const pkgPath = resolve(here, "..", "..", "package.json");
-  const raw = readFileSync(pkgPath, "utf-8");
-  const parsed = JSON.parse(raw) as { version?: string };
-  return parsed.version ?? "0.0.0";
+  return (pkg as { version?: string }).version ?? "0.0.0";
 }
 
 export async function runVersion(): Promise<void> {

@@ -64,9 +64,12 @@ async function main(): Promise<void> {
     // `better-sqlite3` is the Node fallback driver — it's only loaded when
     // the runtime isn't Bun. Marking it external avoids bundling a native
     // `.node` addon that would never run inside the compiled Bun binary.
-    // `pg` is the Postgres driver; it stays external so the binary doesn't
-    // hardcode a specific version for users who self-host Postgres.
-    await $`bun build ${ENTRY} --compile --target=${target.bunTarget} --outfile=${outFile} --minify --external=better-sqlite3 --external=pg`;
+    //
+    // `pg` CANNOT be external: it's statically imported at module top level
+    // in services/db/pool.ts, so a compiled binary needs it bundled — there
+    // is no node_modules at runtime to resolve it from. Bun bundles the
+    // pure-JS driver fine; its optional native libpq extension stays off.
+    await $`bun build ${ENTRY} --compile --target=${target.bunTarget} --outfile=${outFile} --minify --external=better-sqlite3`;
     console.log(`  ✓ ${outFile}`);
   }
 

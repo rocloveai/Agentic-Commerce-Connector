@@ -57,19 +57,22 @@ jobs:
         run: npm run build
 
       - name: Compile binary (${{ matrix.target }})
-        # Bun's `--compile` automatically applies an ad-hoc signature on
-        # macOS when run on a macOS host — that's why we route darwin
-        # targets to macos-* runners. Don't try to re-sign: running
-        # `codesign --force` over Bun's own signature fails with
-        # "invalid or unsupported format" because Bun's single-file
-        # binary appends the bundle payload after the Mach-O, which
-        # breaks `codesign`'s load-command walk on an already-signed
-        # file.
         run: bun run scripts/build-binary.ts ${{ matrix.target }}
 
-      - name: Verify macOS signature
+      - name: Ad-hoc sign with ldid (macOS only)
+        # Bun's `--compile` does NOT auto-sign its output, and Apple's
+        # `codesign` refuses to sign it post-hoc because Bun appends the
+        # bundle payload after the Mach-O's normal end — `codesign`'s
+        # load-command walk errors with "invalid or unsupported format".
+        # `ldid` (the tool Cydia/Procursus use for jailbroken macOS
+        # packages) is tolerant of that layout and produces an ad-hoc
+        # signature Apple Silicon's amfid accepts. Without this step, the
+        # compiled binary gets SIGKILL'd on first run on arm64 macOS.
         if: startsWith(matrix.target, 'darwin-')
-        run: codesign --verify --verbose "dist/binaries/acc-${{ matrix.target }}" || true
+        run: |
+          brew install ldid
+          ldid -S "dist/binaries/acc-${{ matrix.target }}"
+          codesign -dvv "dist/binaries/acc-${{ matrix.target }}" 2>&1 | head -4
 
       - name: Package tarball
         run: |

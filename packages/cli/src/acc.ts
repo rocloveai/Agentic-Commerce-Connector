@@ -67,7 +67,15 @@ async function main(): Promise<void> {
 }
 
 // Only execute when invoked directly, not when imported by tests.
-const entry = process.argv[1];
-if (entry && entry.endsWith("/acc.js")) {
+// Three invocation shapes must match:
+//   1. `node build/acc.js`        → argv[1] ends with /acc.js
+//   2. `npx acc` / `./acc.js`     → argv[1] ends with /acc or /acc.js
+//   3. compiled binary via Bun    → argv[1] is the binary path, any name,
+//      and argv[0] === argv[1] (Bun collapses them). Detect via Bun's
+//      presence as the runtime discriminator.
+const entry = process.argv[1] ?? "";
+const isBunCompiled =
+  typeof (process as unknown as { versions?: Record<string, string> }).versions?.bun === "string";
+if (isBunCompiled || /(^|\/)acc(\.js)?$/.test(entry)) {
   main();
 }
