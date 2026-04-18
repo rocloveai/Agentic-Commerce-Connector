@@ -18,8 +18,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@acc/connector": "^0.3.0",
-    "@acc/skill-spec": "^0.1.0",
+    "@acc/connector": "^0.4.1",
+    "@acc/skill-spec": "^0.4.1",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^11.10.0",
     "qrcode-terminal": "^0.12.0",

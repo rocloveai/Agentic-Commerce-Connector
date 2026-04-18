@@ -33,7 +33,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@acc/skill-spec": "^0.1.0",
+    "@acc/skill-spec": "^0.4.1",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^11.10.0",
