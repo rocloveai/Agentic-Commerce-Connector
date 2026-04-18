@@ -1,0 +1,56 @@
+# Caddyfile for the ACC connector.
+#
+# Caddy handles:
+#   - Automatic HTTPS (Let's Encrypt cert for {$ACC_PUBLIC_HOSTNAME})
+#   - HTTP/2 and HTTP/3
+#   - Request/response buffering for webhook POSTs
+#
+# acc itself binds to 127.0.0.1:10000 (PORTAL_PORT=10000 by default, or
+# override via ~/.acc/.env). Caddy terminates TLS on :443 and reverse-
+# proxies to the local acc process.
+#
+# Usage:
+#   sudo cp deploy/caddy/Caddyfile /etc/caddy/Caddyfile
+#   sudo sed -i "s|{\$ACC_PUBLIC_HOSTNAME}|acc.xagenpay.com|" /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+
+{$ACC_PUBLIC_HOSTNAME} {
+    # Expose the OAuth install/callback flow + admin status + UCP +
+    # skill.md + webhooks. Wildcard proxy catches every path acc serves.
+    reverse_proxy 127.0.0.1:10000 {
+        # Preserve the original client IP for acc's rate-limit and audit
+        # log. Caddy adds X-Forwarded-* by default; being explicit.
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+
+        # Shopify OAuth callbacks arrive within seconds of install; long
+        # timeout is wasteful. 60s also covers slow webhook processing
+        # if the operator stands up a Postgres replica.
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 60s
+        }
+    }
+
+    # Request log (rotates via journald when Caddy runs as a systemd
+    # unit). Drop health checks to keep the log useful.
+    log {
+        output file /var/log/caddy/acc-access.log {
+            roll_size 50MiB
+            roll_keep 7
+        }
+        format json
+    }
+
+    # Small security posture: don't advertise server version, prevent
+    # clickjacking on the admin page, force HTTPS for future requests.
+    header {
+        -Server
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+}

@@ -1,0 +1,36 @@
+[Unit]
+Description=Agentic Commerce Connector (acc start)
+Documentation=https://github.com/rocloveai/Agentic-Commerce-Connector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=acc
+Group=acc
+WorkingDirectory=/home/acc
+Environment=HOME=/home/acc
+ExecStart=/home/acc/.acc/bin/acc start
+Restart=on-failure
+RestartSec=5s
+
+# Hardening — acc only needs to read ~/.acc and bind its portal port.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/acc/.acc
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+
+# Logs land in journald — view with: journalctl -u acc -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
