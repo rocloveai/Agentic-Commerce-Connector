@@ -27,6 +27,8 @@ export interface NonInteractiveSeed {
   readonly signer: string;
   /** Optional passphrase when signer should be encrypted at rest. */
   readonly signerPassphrase?: string;
+  /** Payout wallet address (0x + 40 hex). Defaults to signer address if omitted. */
+  readonly paymentAddress?: string;
 }
 
 export interface StepOutcome {

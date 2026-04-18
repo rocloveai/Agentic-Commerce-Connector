@@ -1,6 +1,6 @@
 {
   "name": "@acc/skill-spec",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "Normative spec + shared types, EIP-712 signing, and JCS canonicalization for Agentic Commerce Connector skill packages",
   "license": "MIT",

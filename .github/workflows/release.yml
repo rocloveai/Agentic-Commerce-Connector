@@ -27,11 +27,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macOS targets on macOS runners — Linux can't produce a
-          # properly ad-hoc-signed Mach-O; unsigned darwin binaries get
-          # SIGKILL'd by amfid on modern macOS.
+          # Both darwin targets on the same macos-14 (arm64) runner. Bun
+          # cross-compiles x64-from-arm64 fine, and ldid signs either
+          # arch. Avoids queueing on macos-13 runners, which are in
+          # short supply on the free tier.
           - { target: darwin-arm64, runner: macos-14 }
-          - { target: darwin-x64,   runner: macos-13 }
+          - { target: darwin-x64,   runner: macos-14 }
           - { target: linux-x64,    runner: ubuntu-latest }
           - { target: linux-arm64,  runner: ubuntu-latest }
     steps:
