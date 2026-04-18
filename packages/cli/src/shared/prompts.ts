@@ -40,6 +40,13 @@ export interface Prompter {
   askYesNo(question: string, opts?: YesNoOptions): Promise<boolean>;
   askChoice(question: string, choices: readonly Choice[]): Promise<string>;
   askSecret(question: string): Promise<string>;
+  /**
+   * Pause until the user presses Enter (or any key). No text input. Useful
+   * for "continue / abort" gates between wizard steps so dangerous side
+   * effects (spawning the browser, hitting Shopify) are explicit.
+   * Non-TTY input (tests) resolves immediately with no blocking.
+   */
+  pressEnterToContinue(prompt: string): Promise<void>;
   close(): void;
 }
 
@@ -91,6 +98,14 @@ export function createPrompter(io: PromptIO): Prompter {
     async askSecret(question) {
       const raw = await io.askSecret(question);
       return raw ?? "";
+    },
+
+    async pressEnterToContinue(prompt) {
+      if (!process.stdin.isTTY || !process.stdout.isTTY) {
+        // Non-TTY (tests, scripted input): don't block.
+        return;
+      }
+      return waitForKeyPress(prompt);
     },
 
     close() {
@@ -168,6 +183,45 @@ function decorate(question: string, opts: AskOptions): string {
     return `${question} [${opts.default}] `;
   }
   return `${question} `;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Single-keypress gate                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Print `prompt` and wait for a single keypress (any of Enter, Space,
+ * or letters) before returning. Ctrl+C exits the process. Used as a
+ * human-review gate before dangerous side-effects.
+ */
+async function waitForKeyPress(prompt: string): Promise<void> {
+  const stdin = process.stdin;
+  const stdout = process.stdout;
+  stdout.write(prompt);
+
+  return new Promise<void>((resolve) => {
+    const wasRaw = stdin.isRaw;
+    stdin.setRawMode(true);
+    stdin.resume();
+
+    const cleanup = (): void => {
+      stdin.off("data", onData);
+      if (!wasRaw) stdin.setRawMode(false);
+      stdout.write("\n");
+    };
+
+    const onData = (chunk: Buffer): void => {
+      const s = chunk.toString();
+      if (s === "\x03") {
+        cleanup();
+        process.exit(130);
+      }
+      // Any key — most naturally Enter — proceeds.
+      cleanup();
+      resolve();
+    };
+    stdin.on("data", onData);
+  });
 }
 
 /* -------------------------------------------------------------------------- */

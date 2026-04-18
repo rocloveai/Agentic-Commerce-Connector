@@ -9,6 +9,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { resolveDataDir } from "../shared/data-dir.js";
+import { createUi } from "../shared/ui.js";
 
 export async function runStart(args: readonly string[]): Promise<void> {
   const flags = parseFlags(args);
@@ -30,8 +31,31 @@ export async function runStart(args: readonly string[]): Promise<void> {
   // Point the OAuth installation store at the data dir.
   if (!process.env.ACC_DATA_DIR) process.env.ACC_DATA_DIR = layout.root;
 
+  const ui = createUi();
+  ui.line(`\n  ${ui.s.magenta("▲")}  ${ui.s.bold("Booting ACC connector…")}\n`);
+
   const { startServer } = await import("@acc/connector/server");
   await startServer();
+
+  // Once the portal has started, print a "running" banner with the handy
+  // URLs the operator usually wants to copy. The connector's own
+  // console.error log lines print just above this — we pass over them
+  // with the separator, which also visually divides "setup / boot noise"
+  // from "you're live now".
+  const selfUrl = (process.env.SELF_URL ?? "").replace(/\/+$/, "") ||
+    `http://localhost:${process.env.PORTAL_PORT ?? "10000"}`;
+  const port = process.env.PORTAL_PORT ?? "10000";
+
+  ui.separator();
+  ui.line(`  ${ui.s.green("●")}  ${ui.s.bold(ui.s.green("ACC is running"))}`);
+  ui.line("");
+  ui.line(`     ${ui.s.dim("listen on")}  127.0.0.1:${port}`);
+  ui.line(`     ${ui.s.dim("public")}     ${selfUrl}`);
+  ui.line(`     ${ui.s.dim("UCP")}        ${selfUrl}/ucp/v1/discovery`);
+  ui.line(`     ${ui.s.dim("skill")}      ${selfUrl}/.well-known/acc-skill.md`);
+  ui.line("");
+  ui.line(`     ${ui.s.dim("Press Ctrl+C to stop.")}`);
+  ui.separator();
 
   // Block until SIGINT/SIGTERM. Under Node, `createServer().listen()`
   // holds the event loop open via its listening socket, so this wouldn't
@@ -39,10 +63,11 @@ export async function runStart(args: readonly string[]): Promise<void> {
   // the top-level async chain completes, even while an HTTP server is
   // actively listening. Hanging on a never-resolving Promise keeps the
   // process alive until a signal arrives.
-  await new Promise<void>((resolve) => {
+  await new Promise<void>((resolvePromise) => {
     const stop = (sig: string) => {
-      process.stderr.write(`\n[acc] ${sig} received, shutting down.\n`);
-      resolve();
+      ui.line("");
+      ui.line(`  ${ui.s.yellow("■")}  ${ui.s.dim(`${sig} received — shutting down…`)}`);
+      resolvePromise();
     };
     process.once("SIGINT", () => stop("SIGINT"));
     process.once("SIGTERM", () => stop("SIGTERM"));

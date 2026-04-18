@@ -74,6 +74,9 @@ export interface Ui {
 
   /** Start a spinner with `text`. Returns a handle with `update` + `stop`. */
   spinner(text: string): Spinner;
+
+  /** Horizontal rule for delimiting setup-done / runtime / shutdown sections. */
+  separator(): void;
 }
 
 export interface Spinner {
@@ -139,6 +142,13 @@ export function createUi(opts: UiOptions = {}): Ui {
 
     spinner(text) {
       return makeSpinner(stream, s, text, colorOn);
+    },
+
+    separator() {
+      // Terminal columns; fall back to 72 when not a TTY (shouldn't happen
+      // in normal use since ui is auto-disabled there, but be safe).
+      const w = Math.min((stream.columns ?? 72) - 4, 72);
+      write(`\n  ${s.gray("─".repeat(w))}\n\n`);
     },
   };
 

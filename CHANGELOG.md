@@ -1,5 +1,32 @@
 
 
+## [0.7.4] - 2026-04-18
+
+Awareness-of-state UX: the user should always know what's about to happen
+and whether the service is running.
+
+### Added
+- **Authorize gate before browser opens**: after the merchant types their
+  Shopify store domain in the CLI, the install URL is printed in a box,
+  then `acc init` pauses on a single-keypress prompt —
+  "Press Enter to authorize in Shopify (or Ctrl+C to abort)". The
+  browser only launches after the confirmation. Previously the browser
+  popped up immediately after payout-address confirmation, giving users
+  no beat to register the transition.
+- **"ACC is running" banner in `acc start`**: after the connector
+  finishes booting, a visually-separated block prints the port, public
+  URL, UCP discovery URL, and skill.md URL, plus a Ctrl+C hint. On
+  shutdown, a matching "shutting down" line prints. The existing
+  connector log lines still appear above (warnings about
+  DATABASE_URL / PORTAL_TOKEN etc.), but the banner makes "I am live
+  now" visually unambiguous.
+- **Separator line around `acc init` finale**: the "Setup complete"
+  block is now wrapped in horizontal rules so the user can see where
+  setup ends and their shell returns.
+- **`Prompter.pressEnterToContinue`** helper — a new single-keypress
+  raw-mode gate used by the authorize step. Non-TTY paths (tests,
+  piped stdin) resolve immediately without blocking.
+
 ## [0.7.3] - 2026-04-18
 
 Second-round UX fixes after live testing v0.7.2.

@@ -158,8 +158,8 @@ function printFinaleSummary(
   cfg: AccConfig,
   layout: DataDirLayout,
 ): void {
-  ui.line("");
-  ui.line(`  ${ui.s.green("✨")}  ${ui.s.bold("All set.")}`);
+  ui.separator();
+  ui.line(`  ${ui.s.green("✨")}  ${ui.s.bold("Setup complete.")}`);
   ui.line("");
   ui.line(`     ${ui.s.dim("data dir ")} ${layout.root}`);
   ui.line(`     ${ui.s.dim("skill   ")} ${cfg.skillMdPath}`);
@@ -167,12 +167,13 @@ function printFinaleSummary(
     `     ${ui.s.dim("wallet  ")} ${cfg.wallet?.address ?? ui.s.yellow("(not configured)")}`,
   );
   ui.line("");
-  ui.line(`     Start the connector now:  ${ui.s.bold(ui.s.green("acc start"))}`);
-  ui.line("");
+  ui.line(
+    `     Next: run ${ui.s.bold(ui.s.green("acc start"))} to boot the connector.`,
+  );
   ui.line(
     `     More:  ${ui.s.dim("acc doctor")}  ${ui.s.dim("·")}  ${ui.s.dim("acc publish")}`,
   );
-  ui.line("");
+  ui.separator();
 }
 
 /* -------------------------------------------------------------------------- */

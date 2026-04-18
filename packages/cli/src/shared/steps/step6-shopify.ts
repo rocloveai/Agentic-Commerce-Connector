@@ -96,13 +96,16 @@ export async function stepShopify(ctx: StepContext): Promise<StepOutcome> {
   const pair = await createPair(relayUrl);
   const installUrlWithShop = appendShop(pair.install_url, shopDomain);
 
-  // 3. Show URL, tell the user we're about to open the browser, then do it.
+  // 3. Show the URL first, then wait for the user to press Enter before
+  //    spawning the browser. Gives them a beat to copy-paste the URL
+  //    manually (e.g. if installing ACC on a server over SSH and wanting
+  //    to authorize from a laptop browser), and makes the "what happens
+  //    next" step obvious rather than the page flashing by unannounced.
   ctx.ui.highlightUrl(installUrlWithShop);
-  ctx.ui.line(`  ${ctx.ui.s.dim("Opening in your browser…")}`);
-  ctx.ui.line("");
-  // Small breath before the browser takes over, so the user registers what
-  // just flashed up on screen. openBrowser returns fast anyway.
-  await new Promise((r) => setTimeout(r, 800));
+  await ctx.prompter.pressEnterToContinue(
+    `  Press ${ctx.ui.s.bold("Enter")} to authorize in Shopify ${ctx.ui.s.dim("(or Ctrl+C to abort)")}`,
+  );
+
   const opened = await openBrowser(installUrlWithShop).catch(() => false);
   if (!opened) {
     ctx.ui.line(
