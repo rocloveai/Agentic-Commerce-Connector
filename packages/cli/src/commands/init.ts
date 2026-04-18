@@ -17,7 +17,7 @@
 // Steps live in src/shared/steps/ so this file stays a thin orchestrator.
 // ---------------------------------------------------------------------------
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { ensureDataDir, type DataDirLayout } from "../shared/data-dir.js";
 import {
@@ -92,6 +92,18 @@ export async function runInit(
     if (action === "reset") {
       const backup = backupConfig(layout.configPath);
       if (backup) ui.line(`  ${ui.s.dim(`↺ backed up previous config to ${backup}`)}`);
+      // "Start over" should really start over — including signer identity.
+      // We rename the key file so step5 sees a fresh slate and prompts for
+      // generation again. The old key is preserved as a timestamped .bak
+      // so the merchant can recover their previous marketplace identity if
+      // they change their mind. The encryption key is deliberately NOT
+      // rotated here because it would render existing shopify_installations
+      // rows unreadable.
+      if (existsSync(layout.signerKeyFile)) {
+        const signerBak = `${layout.signerKeyFile}.bak.${Date.now()}`;
+        renameSync(layout.signerKeyFile, signerBak);
+        ui.line(`  ${ui.s.dim(`↺ backed up previous signer to ${signerBak}`)}`);
+      }
     }
 
     const ctx: StepContext = {

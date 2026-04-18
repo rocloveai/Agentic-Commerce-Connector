@@ -1,5 +1,17 @@
 
 
+## [0.7.5] - 2026-04-18
+
+### Fixed
+- **"Start over" now actually starts over**: when the re-entrance menu's
+  "start over" choice (or `--force`) is picked, `acc init` now also
+  backs up the existing `signer.key` to `signer.key.bak.<timestamp>` so
+  the signer step regenerates a fresh identity. Previously the signer
+  was silently preserved — users who chose "start over" expecting a
+  clean slate saw the Payout step skip past an interactive signer
+  prompt. The encryption key is still preserved on reset (rotating it
+  would render existing `shopify_installations` rows unreadable).
+
 ## [0.7.4] - 2026-04-18
 
 Awareness-of-state UX: the user should always know what's about to happen

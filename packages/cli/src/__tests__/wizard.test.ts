@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { readdirSync } from "node:fs";
 import {
   mkdtempSync,
   rmSync,
@@ -85,7 +86,7 @@ describe("runInit — non-interactive seed (full 8-step path)", () => {
     expect(env).toMatch(/ACC_ENCRYPTION_KEY=[0-9a-f]{64}/);
   });
 
-  it("is idempotent at seed-level when force flag is passed", async () => {
+  it("regenerates signer on --force (old signer is backed up, fresh identity)", async () => {
     const dataDir = join(tmp, "acc-data");
     await runInit([`--data-dir=${dataDir}`], { io: queueIO([]), seed: SEED });
     const firstWallet = loadConfig(join(dataDir, "config.json"))?.wallet?.address;
@@ -95,8 +96,16 @@ describe("runInit — non-interactive seed (full 8-step path)", () => {
       seed: SEED,
     });
     const secondWallet = loadConfig(join(dataDir, "config.json"))?.wallet?.address;
-    // signer.key is preserved when it already exists, so address must match
-    expect(secondWallet).toBe(firstWallet);
+    // --force (start-over reset) moves the existing signer.key to a
+    // timestamped .bak file and regenerates, so the second wallet must
+    // differ from the first. This is a deliberate change from v0.7.3
+    // where --force silently preserved signer.key.
+    expect(secondWallet).not.toBe(firstWallet);
+    expect(secondWallet).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    // Previous signer is recoverable from the .bak alongside signer.key.
+    const signerDir = join(dataDir, "keys");
+    const names = readdirSync(signerDir);
+    expect(names.some((n) => n.startsWith("signer.key.bak."))).toBe(true);
   });
 });
 
