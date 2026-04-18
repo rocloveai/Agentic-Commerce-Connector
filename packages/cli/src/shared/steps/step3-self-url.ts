@@ -32,6 +32,24 @@ export async function stepSelfUrl(ctx: StepContext): Promise<StepOutcome> {
     return { applied: true, summary: `SELF_URL=${trimmed}` };
   }
 
+  // `install-server.sh` sets ACC_PUBLIC_HOSTNAME when the merchant is
+  // bootstrapping a production server; read it as a soft pre-fill so the
+  // wizard skips the selfUrl prompt but still runs every other step
+  // interactively. (A full `seed` would skip signer / payout / Shopify
+  // too, which we don't want for server bootstrap.)
+  const envHostname = process.env.ACC_PUBLIC_HOSTNAME?.trim();
+  if (envHostname) {
+    const raw = /^https?:\/\//.test(envHostname)
+      ? envHostname
+      : `https://${envHostname}`;
+    const trimmed = raw.replace(/\/+$/, "");
+    validateOrThrow(trimmed);
+    upsertEnv(ctx.layout.envPath, { SELF_URL: trimmed });
+    ctx.config.selfUrl = trimmed;
+    ctx.ui.ok("Public URL", `${trimmed} ${ctx.ui.s.dim("(from ACC_PUBLIC_HOSTNAME)")}`);
+    return { applied: true, summary: `SELF_URL=${trimmed}` };
+  }
+
   if (!ctx.advanced) {
     upsertEnv(ctx.layout.envPath, { SELF_URL: DEFAULT_SELF_URL });
     ctx.config.selfUrl = DEFAULT_SELF_URL;

@@ -103,25 +103,34 @@
         e-commerce.
       </p>
 
+      <h2>Install the CLI</h2>
       <pre><code>curl -fsSL https://get.xagenpay.com/install | sh</code></pre>
       <p class="platforms">
         macOS (arm64, x64) · Linux (x64, arm64) · no Node, no clone required.
       </p>
 
-      <h2>Pin a version</h2>
-      <pre><code>curl -fsSL https://get.xagenpay.com/install | ACC_VERSION=v0.4.0 sh</code></pre>
+      <h2>Deploy to your server (one command)</h2>
+      <pre><code>curl -fsSL https://get.xagenpay.com/install-server | \
+  ACC_PUBLIC_HOSTNAME=acc.mystore.com sudo bash</code></pre>
+      <p class="platforms">
+        Installs acc + nginx/Caddy + TLS + runs <code>acc init</code> wizard + enables systemd.
+        DNS A record for the hostname must point at the server first.
+      </p>
 
       <h2>After install</h2>
-      <pre><code>acc init      # 8-step wizard
-acc start     # boot the connector
-acc doctor    # diagnose
-acc upgrade   # update in place</code></pre>
+      <pre><code>acc init        # setup wizard (browser-based Shopify connect)
+acc start       # boot the connector
+acc doctor      # diagnose
+acc upgrade     # update in place</code></pre>
+
+      <h2>Pin a version</h2>
+      <pre><code>curl -fsSL https://get.xagenpay.com/install | ACC_VERSION=v0.7.5 sh</code></pre>
 
       <footer>
         Source &amp; docs:
         <a
-          href="https://github.com/SELFVIBECODING/agentic-commerce-connector"
-          >github.com/SELFVIBECODING/agentic-commerce-connector</a
+          href="https://github.com/rocloveai/Agentic-Commerce-Connector"
+          >github.com/rocloveai/Agentic-Commerce-Connector</a
         >
       </footer>
     </main>

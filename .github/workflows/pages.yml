@@ -5,15 +5,17 @@ name: pages
 # We deploy from `site/` (CNAME + landing page) but copy the canonical
 # `install.sh` in at build time so the repo has a single source of truth.
 #
-#   https://get.xagenpay.com/            → landing page (site/index.html)
-#   https://get.xagenpay.com/install     → install.sh
-#   https://get.xagenpay.com/install.sh  → install.sh (alias)
+#   https://get.xagenpay.com/               → landing page (site/index.html)
+#   https://get.xagenpay.com/install        → install.sh         (CLI only)
+#   https://get.xagenpay.com/install.sh     → install.sh         (alias)
+#   https://get.xagenpay.com/install-server → install-server.sh  (full VPS bootstrap)
 
 on:
   push:
     branches: [main]
     paths:
       - "install.sh"
+      - "deploy/scripts/install-server.sh"
       - "site/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -39,9 +41,13 @@ jobs:
           out=_site
           mkdir -p "$out"
           cp -r site/. "$out/"
-          # Canonical install script — exposed at two paths for convenience.
+          # Canonical CLI installer — exposed at /install and /install.sh.
           install -m 0644 install.sh "$out/install"
           install -m 0644 install.sh "$out/install.sh"
+          # Full VPS bootstrap (binary + nginx/Caddy + TLS + acc init)
+          # exposed at /install-server.
+          install -m 0644 deploy/scripts/install-server.sh "$out/install-server"
+          install -m 0644 deploy/scripts/install-server.sh "$out/install-server.sh"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

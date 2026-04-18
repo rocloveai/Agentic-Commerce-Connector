@@ -1,5 +1,46 @@
 
 
+## [0.8.0] - 2026-04-18
+
+One-command VPS deploy. Merchants can now take a blank Ubuntu/Debian
+server from zero to a TLS-fronted, systemd-managed ACC instance with
+an interactive Shopify install — in a single shell command.
+
+### Added
+- **`install-server.sh` rewritten** as a full bootstrap script:
+  ```bash
+  curl -fsSL https://get.xagenpay.com/install-server | \
+    ACC_PUBLIC_HOSTNAME=acc.mystore.com sudo bash
+  ```
+  End-to-end:
+    1. Pre-flight: root check, hostname / DNS match, existing-install
+       detection.
+    2. Creates the `acc` system user + installs the binary via the CLI
+       installer.
+    3. Writes a hardened systemd unit (`PortalPort`, `NoNewPrivileges`,
+       `ProtectSystem=strict`, `ReadWritePaths=~acc/.acc`).
+    4. Configures a reverse proxy: detects existing nginx or Caddy,
+       otherwise installs Caddy fresh. nginx path wires up certbot
+       + Let's Encrypt; Caddy handles auto-TLS.
+    5. Re-attaches stdin to `/dev/tty` so the interactive `acc init`
+       wizard prompts work even under `curl | bash`. Seeds the public
+       URL from `ACC_PUBLIC_HOSTNAME`; signer / payout / Shopify pair
+       remain interactive.
+    6. `systemctl enable --now acc` and smoke-test.
+- **`get.xagenpay.com/install-server`** endpoint (served by the Pages
+  workflow from `deploy/scripts/install-server.sh`).
+- **`ACC_PUBLIC_HOSTNAME` env var is a soft pre-fill** for `acc init`
+  step 3: when set, the wizard skips the public-URL prompt and uses
+  `https://$ACC_PUBLIC_HOSTNAME` without activating seed mode (so
+  signer / payout / Shopify still prompt normally). Used by the VPS
+  bootstrap script; harmless otherwise.
+
+### Changed
+- **Landing page at `get.xagenpay.com`** now shows two install
+  commands: the CLI-only `curl | install | sh` and the full VPS
+  bootstrap with `ACC_PUBLIC_HOSTNAME`. Version pin example bumped
+  to v0.7.5. Source link corrected to rocloveai/.
+
 ## [0.7.5] - 2026-04-18
 
 ### Fixed
