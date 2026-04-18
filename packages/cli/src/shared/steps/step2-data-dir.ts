@@ -7,6 +7,7 @@ export async function stepDataDir(ctx: StepContext): Promise<StepOutcome> {
   // reports the location.
   const layout = ensureDataDir(ctx.layout.root);
   ctx.layout = layout;
+  ctx.ui.ok("Data directory", layout.root);
   return {
     applied: true,
     summary: `Data dir ready at ${layout.root}`,

@@ -49,5 +49,6 @@ export async function stepSqlite(ctx: StepContext): Promise<StepOutcome> {
   } finally {
     db.close();
   }
+  ctx.ui.ok("SQLite schema", "ready");
   return { applied: true, summary: `SQLite schema applied to ${ctx.layout.dbFile}` };
 }

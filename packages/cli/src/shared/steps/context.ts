@@ -1,6 +1,7 @@
 import type { Prompter } from "../prompts.js";
 import type { DataDirLayout } from "../data-dir.js";
 import type { AccConfig } from "../config-store.js";
+import type { Ui } from "../ui.js";
 
 export interface StepContext {
   /** Fully-resolved data-dir layout. */
@@ -11,6 +12,10 @@ export interface StepContext {
   flags: ReadonlyMap<string, string>;
   /** Whether --force was passed. */
   force: boolean;
+  /** Whether --advanced was passed (exposes hidden prompts). */
+  advanced: boolean;
+  /** Terminal UI helper — colours, spinners, boxes. Tests may inject a no-color Ui. */
+  ui: Ui;
   /** Mutable config being accumulated; steps patch and later saveConfig writes. */
   config: Partial<AccConfig> & { wallet?: AccConfig["wallet"] };
   /** Non-interactive seed (for --non-interactive mode / tests). */
@@ -31,7 +36,11 @@ export interface NonInteractiveSeed {
   readonly signer: string;
   /** Optional passphrase when signer should be encrypted at rest. */
   readonly signerPassphrase?: string;
-  /** Payout wallet address (0x + 40 hex). Defaults to signer address if omitted. */
+  /**
+   * Payout wallet address (0x + 40 hex). If omitted in non-interactive
+   * mode the signer address is used (testing convenience). Interactive
+   * users are always prompted — no silent fallback.
+   */
   readonly paymentAddress?: string;
 }
 

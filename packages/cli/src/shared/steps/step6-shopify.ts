@@ -83,25 +83,22 @@ export async function stepShopify(ctx: StepContext): Promise<StepOutcome> {
     };
   }
 
+  ctx.ui.section("Connect your Shopify store");
+
   // 1. Request a pair code from the relay.
   const pair = await createPair(relayUrl);
 
-  // 2. Announce + attempt browser auto-open (best-effort).
-  process.stdout.write(
-    [
-      "",
-      "  Shopify install — open this URL in your browser:",
-      "",
-      `    ${pair.install_url}`,
-      "",
-      `  (Pair expires in ${Math.floor(pair.expires_in / 60)} min. Opening in your browser…)`,
-      "",
-    ].join("\n") + "\n",
-  );
-  await openBrowser(pair.install_url).catch(() => false);
+  // 2. Show URL in a box + try to auto-open the browser.
+  ctx.ui.highlightUrl(pair.install_url);
+  const opened = await openBrowser(pair.install_url).catch(() => false);
+  if (!opened) {
+    ctx.ui.line(
+      `  ${ctx.ui.s.dim("Browser didn't open automatically — copy the URL above manually.")}`,
+    );
+  }
 
-  // 3. Poll until tokens are ready or TTL expires.
-  const ready = await pollForTokens(pair.poll_url, {
+  // 3. Poll until tokens are ready, with a live countdown spinner.
+  const ready = await pollForTokens(ctx, pair.poll_url, {
     intervalMs: POLL_INTERVAL_MS,
     maxWaitMs: Math.min(DEFAULT_MAX_WAIT_MS, pair.expires_in * 1000),
   });
@@ -122,6 +119,13 @@ export async function stepShopify(ctx: StepContext): Promise<StepOutcome> {
     SHOPIFY_CLIENT_ID: "relay-hosted",
     SHOPIFY_CLIENT_SECRET: "",
   });
+
+  const scopeNote = `${ready.scopes.length} scopes`;
+  const refreshNote =
+    ready.refresh_token && ready.token_expires_at !== null
+      ? "auto-refresh on"
+      : "token long-lived";
+  ctx.ui.ok("Shopify connected", `${ready.shop}  ${ctx.ui.s.dim(`(${scopeNote} · ${refreshNote})`)}`);
 
   return {
     applied: true,
@@ -149,37 +153,51 @@ async function createPair(relayUrl: string): Promise<PairNewResponse> {
 }
 
 async function pollForTokens(
+  ctx: StepContext,
   pollUrl: string,
   opts: { readonly intervalMs: number; readonly maxWaitMs: number },
 ): Promise<PairPollReady> {
   const deadline = Date.now() + opts.maxWaitMs;
-  let lastDotCount = 0;
-  while (Date.now() < deadline) {
-    const res = await fetch(pollUrl);
-    const body = (await res.json().catch(() => ({}))) as
-      | PairPollReady
-      | PairPollPending
-      | PairPollDone;
+  const spinner = ctx.ui.spinner(`waiting for you to authorize… ${formatMmSs(opts.maxWaitMs)} remaining`);
 
-    if (res.status === 200 && body.status === "ready") {
-      if (lastDotCount > 0) process.stdout.write("\n");
-      return body;
+  try {
+    while (Date.now() < deadline) {
+      const res = await fetch(pollUrl);
+      const body = (await res.json().catch(() => ({}))) as
+        | PairPollReady
+        | PairPollPending
+        | PairPollDone;
+
+      if (res.status === 200 && body.status === "ready") {
+        spinner.clear();
+        return body;
+      }
+      if (res.status === 404 || body.status === "unknown" || body.status === "expired") {
+        spinner.fail("install link expired before you authorized");
+        throw new Error(
+          "[Shopify pair] pair code expired. Re-run `acc init` to get a fresh URL.",
+        );
+      }
+      // Refresh spinner text with updated countdown.
+      spinner.update(`waiting for you to authorize… ${formatMmSs(deadline - Date.now())} remaining`);
+      await new Promise((r) => setTimeout(r, opts.intervalMs));
     }
-    if (res.status === 404 || body.status === "unknown" || body.status === "expired") {
-      if (lastDotCount > 0) process.stdout.write("\n");
-      throw new Error(
-        "[Shopify pair] pair code expired before the install completed. Re-run `acc init` to get a fresh URL.",
-      );
-    }
-    // else pending — progress indicator
-    process.stdout.write(".");
-    lastDotCount += 1;
-    await new Promise((r) => setTimeout(r, opts.intervalMs));
+    spinner.fail("timed out waiting for Shopify install");
+    throw new Error(
+      "[Shopify pair] timed out. Re-run `acc init` if you need more time.",
+    );
+  } catch (err) {
+    // Ensure spinner is cleared even on unexpected throws.
+    spinner.clear();
+    throw err;
   }
-  if (lastDotCount > 0) process.stdout.write("\n");
-  throw new Error(
-    "[Shopify pair] timed out waiting for the install to complete. Re-run `acc init` if the merchant needs more time.",
-  );
+}
+
+function formatMmSs(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 /* -------------------------------------------------------------------------- */

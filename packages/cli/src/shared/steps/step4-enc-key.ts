@@ -13,10 +13,12 @@ export async function stepEncKey(ctx: StepContext): Promise<StepOutcome> {
       );
     }
     upsertEnv(ctx.layout.envPath, { ACC_ENCRYPTION_KEY: key });
+    ctx.ui.ok("Encryption key", "AES-256 (preserved)");
     return { applied: false, summary: "enc.key preserved (already present)" };
   }
   key = generateEncKey();
   writeEncKey(ctx.layout.encKeyFile, key);
   upsertEnv(ctx.layout.envPath, { ACC_ENCRYPTION_KEY: key });
+  ctx.ui.ok("Encryption key", "AES-256");
   return { applied: true, summary: "generated enc.key (0600) + ACC_ENCRYPTION_KEY" };
 }

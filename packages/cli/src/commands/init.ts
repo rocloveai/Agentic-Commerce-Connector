@@ -1,9 +1,20 @@
 // ---------------------------------------------------------------------------
-// `acc init` — 8-step interactive wizard.
+// `acc init` — merchant onboarding wizard.
+//
+// Visual model:
+//   - Background / infra steps (preflight, data dir, enc key, sqlite,
+//     skill template) render as single `✓ label value` rows. No step
+//     numbers — users shouldn't feel like they're doing 8 things when
+//     they're really doing 2-3.
+//   - User-facing steps (signer, payout, Shopify connect) print a
+//     section header (`┃ Title`) + prompt + result line.
+//
+// Behaviour controls:
+//   --advanced    expose every customisation point (full-fat old flow)
+//   --force       skip re-entrance prompt, back up existing config
+//   --data-dir    override data directory
 //
 // Steps live in src/shared/steps/ so this file stays a thin orchestrator.
-// See docs/plans/2026-04-16-phase-8-cli-wizard-structure.md §E for the
-// step-by-step intent.
 // ---------------------------------------------------------------------------
 
 import { existsSync, readFileSync } from "node:fs";
@@ -21,11 +32,13 @@ import {
   backupConfig,
   type AccConfig,
 } from "../shared/config-store.js";
+import { createUi, type Ui } from "../shared/ui.js";
 import { stepPreflight } from "../shared/steps/step1-preflight.js";
 import { stepDataDir } from "../shared/steps/step2-data-dir.js";
 import { stepSelfUrl } from "../shared/steps/step3-self-url.js";
 import { stepEncKey } from "../shared/steps/step4-enc-key.js";
 import { stepSigner } from "../shared/steps/step5-signer.js";
+import { stepPayout } from "../shared/steps/step5b-payout.js";
 import { stepShopify } from "../shared/steps/step6-shopify.js";
 import { stepSqlite } from "../shared/steps/step7-sqlite.js";
 import { stepSkill } from "../shared/steps/step8-skill.js";
@@ -39,6 +52,8 @@ export interface RunInitOptions {
   readonly io?: PromptIO;
   /** Seed for non-interactive mode. Supplied via env or tests. */
   readonly seed?: Partial<NonInteractiveSeed>;
+  /** Inject a Ui (tests may want color-off + captured stream). */
+  readonly ui?: Ui;
 }
 
 const DEFAULT_REGISTRY = "https://api.siliconretail.com";
@@ -50,13 +65,17 @@ export async function runInit(
 ): Promise<void> {
   const flags = parseFlags(args);
   const force = flags.has("force");
+  const advanced = flags.has("advanced");
   const dataDirArg = flags.get("data-dir") ?? defaultDataDir();
 
   const io = opts.io ?? defaultPromptIO();
   const prompter = createPrompter(io);
   const seed = opts.seed ?? nonInteractiveSeedFromEnv();
+  const ui = opts.ui ?? createUi();
 
   try {
+    printBanner(ui);
+
     const layout = ensureDataDir(dataDirArg);
     const existing = loadConfig(layout.configPath);
 
@@ -67,12 +86,12 @@ export async function runInit(
       force,
     );
     if (action === "cancel" || action === "keep") {
-      process.stdout.write(`\nNo changes written. (action=${action})\n`);
+      ui.line(`\n  No changes written. (${action})\n`);
       return;
     }
     if (action === "reset") {
       const backup = backupConfig(layout.configPath);
-      if (backup) process.stdout.write(`Backed up old config to ${backup}\n`);
+      if (backup) ui.line(`  ${ui.s.dim(`↺ backed up previous config to ${backup}`)}`);
     }
 
     const ctx: StepContext = {
@@ -80,6 +99,8 @@ export async function runInit(
       prompter,
       flags,
       force,
+      advanced,
+      ui,
       config: existing
         ? { ...existing }
         : {
@@ -91,35 +112,67 @@ export async function runInit(
       seed,
     };
 
-    const steps: Array<
-      readonly [string, (c: StepContext) => Promise<{ summary: string }>]
-    > =
+    // Step order — each `run` is responsible for its own rendering. The
+    // orchestrator no longer prints "N/8 Title" headers; background steps
+    // emit a single `✓` row, interactive steps emit their own sections.
+    const runs: Array<(c: StepContext) => Promise<unknown>> =
       action === "shopify-only"
-        ? [["6/8 Shopify custom-app tokens", stepShopify]]
+        ? [stepShopify]
         : [
-            ["1/8 Preflight", stepPreflight],
-            ["2/8 Data directory", stepDataDir],
-            ["3/8 Public URL", stepSelfUrl],
-            ["4/8 Encryption key", stepEncKey],
-            ["5/8 Marketplace signer", stepSigner],
-            ["6/8 Shopify custom-app tokens", stepShopify],
-            ["7/8 SQLite migration", stepSqlite],
-            ["8/8 Skill template", stepSkill],
+            stepPreflight,
+            stepDataDir,
+            stepSelfUrl,
+            stepEncKey,
+            stepSigner,
+            stepPayout,
+            stepSqlite,
+            stepSkill,
+            stepShopify,
           ];
 
-    for (const [label, step] of steps) {
-      process.stdout.write(`\n${label}\n`);
-      const out = await step(ctx);
-      process.stdout.write(`  → ${out.summary}\n`);
+    for (const step of runs) {
+      await step(ctx);
     }
 
     const final = finaliseConfig(ctx.config, layout);
     saveConfig(layout.configPath, final);
 
-    printFinaleSummary(final, layout);
+    printFinaleSummary(ui, final, layout);
   } finally {
     prompter.close();
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Rendering helpers                                                          */
+/* -------------------------------------------------------------------------- */
+
+function printBanner(ui: Ui): void {
+  ui.line(
+    `\n  ${ui.s.magenta("▲")}  ${ui.s.bold("Agentic Commerce Connector")}  ${ui.s.dim("— merchant setup")}\n`,
+  );
+}
+
+function printFinaleSummary(
+  ui: Ui,
+  cfg: AccConfig,
+  layout: DataDirLayout,
+): void {
+  ui.line("");
+  ui.line(`  ${ui.s.green("✨")}  ${ui.s.bold("All set.")}`);
+  ui.line("");
+  ui.line(`     ${ui.s.dim("data dir ")} ${layout.root}`);
+  ui.line(`     ${ui.s.dim("skill   ")} ${cfg.skillMdPath}`);
+  ui.line(
+    `     ${ui.s.dim("wallet  ")} ${cfg.wallet?.address ?? ui.s.yellow("(not configured)")}`,
+  );
+  ui.line("");
+  ui.line(`     Start the connector now:  ${ui.s.bold(ui.s.green("acc start"))}`);
+  ui.line("");
+  ui.line(
+    `     More:  ${ui.s.dim("acc doctor")}  ${ui.s.dim("·")}  ${ui.s.dim("acc publish")}`,
+  );
+  ui.line("");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -149,7 +202,7 @@ async function resolveReentrantAction(
     `Found existing config at ${layout.configPath}. What next?`,
     [
       { key: "a", label: "keep as-is (exit)" },
-      { key: "b", label: "update Shopify tokens only" },
+      { key: "b", label: "update Shopify connection only" },
       { key: "c", label: "start over (backs up current)" },
       { key: "d", label: "cancel" },
     ],
@@ -172,25 +225,13 @@ function finaliseConfig(
     dataVersion: 1,
     registry: partial.registry ?? DEFAULT_REGISTRY,
     chainId: partial.chainId ?? DEFAULT_CHAIN_ID,
-    selfUrl: partial.selfUrl ?? "https://acc.example.com",
+    selfUrl: partial.selfUrl ?? "http://localhost:10000",
     skillMdPath: partial.skillMdPath ?? layout.skillMd,
   };
   if (partial.wallet) {
     return { ...base, wallet: partial.wallet };
   }
   return base;
-}
-
-function printFinaleSummary(cfg: AccConfig, layout: DataDirLayout): void {
-  process.stdout.write(
-    `\n✓ acc init complete\n` +
-      `  data dir : ${layout.root}\n` +
-      `  registry : ${cfg.registry}\n` +
-      `  selfUrl  : ${cfg.selfUrl}\n` +
-      `  wallet   : ${cfg.wallet?.address ?? "(not configured)"}\n` +
-      `  skill    : ${cfg.skillMdPath}\n` +
-      `\nNext: acc start   (or: acc doctor to verify setup)\n`,
-  );
 }
 
 // When the CLI is installed globally (cwd is not a checked-out ACC repo), we

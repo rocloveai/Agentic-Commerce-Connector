@@ -1,6 +1,6 @@
 {
   "name": "@acc/cli",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "module",
   "description": "acc-skill CLI — generate, sign, publish, and verify ACC skill packages",
   "license": "MIT",
@@ -18,8 +18,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@acc/connector": "^0.7.0",
-    "@acc/skill-spec": "^0.7.0",
+    "@acc/connector": "^0.7.1",
+    "@acc/skill-spec": "^0.7.1",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^11.10.0",
     "qrcode-terminal": "^0.12.0",

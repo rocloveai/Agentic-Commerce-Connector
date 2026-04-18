@@ -1,5 +1,58 @@
 # Changelog
 
+## [0.7.1] - 2026-04-18
+
+UX polish for `acc init`. No behavioural changes; merchants see a much
+friendlier wizard.
+
+### Added
+- **`shared/ui.ts`** — terminal UI primitives (colours, spinner, boxed URL,
+  checkmark rows). No external deps; falls back to plain text when
+  `NO_COLOR` is set or stdout isn't a TTY.
+- **`--advanced` flag for `acc init`** — opt-in to the legacy full-fat
+  prompt flow (customise selfUrl, signer options, etc.).
+- **Dedicated payout-address step** (`step5b-payout.ts`). Three choices:
+  same as signer (simple), paste a different address (recommended for
+  production), or defer. No longer silently defaults to signer.
+
+### Changed
+- **`acc init` default path**: compressed from "8-step wizard" rendering
+  to a checklist of background steps + a single interactive section for
+  signer choice + payout choice + Shopify pair. Typical zero-advanced run
+  looks like:
+  ```
+  ▲  Agentic Commerce Connector
+
+  ✓  Runtime           Node 20.17.0
+  ✓  Data directory    ~/.acc
+  ✓  Public URL        http://localhost:10000  (change with --advanced)
+  ✓  Encryption key    AES-256
+
+  ┃  Signer wallet
+  ? How do you want the signer set up?  ❯ auto-generate
+
+  ┃  Payout address
+  ? Payout address  ❯ same as signer / paste separate / configure later
+
+  ┃  Connect your Shopify store
+  ⠋ waiting for you to authorize…  14:37 remaining
+
+  ✨  All set.
+  ```
+- **`SELF_URL` default**: now `http://localhost:10000` (was the footgun
+  `https://acc.example.com`, which users often mistyped as their shop
+  URL). Users still running a public instance can pass `--advanced` or
+  edit `.env` directly.
+- **Shopify pair-flow polling**: dot-polling replaced with an animated
+  spinner + live mm:ss countdown until the install link expires. The
+  install URL is shown in a boxed Cyan frame so it stands out.
+- **Finale summary**: more celebratory, highlights a single next command
+  (`acc start`) instead of burying it.
+
+### Fixed
+- Wizard's signer step no longer asks about payout as a sub-prompt; the
+  two are genuinely separate concerns (see rationale in step5b).
+
 ## [0.7.0] - 2026-04-18
 
 One-click shared-app onboarding: merchants authorise our shared Shopify

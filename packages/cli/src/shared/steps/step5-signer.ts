@@ -8,37 +8,51 @@ import {
   isWrappedSigner,
 } from "../keys.js";
 import { upsertEnv } from "../env-writer.js";
+import { shortHex } from "../ui.js";
 import type { StepContext, StepOutcome } from "./context.js";
 
+// ---------------------------------------------------------------------------
+// Step 5 — Signer wallet (identity).
+//
+// The signer key signs your marketplace skill.md so AI agents can verify
+// the listing hasn't been tampered with. It is NOT where customer
+// payments land (see step5b-payout). It lives encrypted on this server;
+// if compromised, the worst an attacker can do is forge skill updates,
+// which you can recover from by minting a new signer.
+//
+// Default flow:
+//   Auto-generate a new key. Interactive users with an existing identity
+//   can choose "paste existing". Non-crypto merchants never see --advanced
+//   details (passphrase encryption etc.); those are opt-in.
+// ---------------------------------------------------------------------------
+
 const HEX_RE = /^0x[0-9a-fA-F]{64}$/;
-const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
 
 export async function stepSigner(ctx: StepContext): Promise<StepOutcome> {
+  // Preserve an existing signer across re-init runs.
   if (existsSync(ctx.layout.signerKeyFile)) {
     const contents = readFileSync(ctx.layout.signerKeyFile, "utf-8").trim();
     const encrypted = isWrappedSigner(contents);
-    const address = encrypted ? "[encrypted]" : deriveAddress(contents);
-    ctx.config.wallet = {
-      address: encrypted ? "0x0000000000000000000000000000000000000000" : address,
-      encrypted,
-    };
-    // Preserve key file but make sure the .env matches — plaintext keys
-    // get re-exposed as MERCHANT_SIGNER_PRIVATE_KEY so `acc start` can
-    // actually read them. Encrypted keys can't be auto-exported; user has
-    // to set the env var themselves from their passphrase.
+    const address = encrypted
+      ? "0x0000000000000000000000000000000000000000"
+      : deriveAddress(contents);
+    ctx.config.wallet = { address, encrypted };
     if (!encrypted) {
-      const payoutAddress = await askPaymentAddress(ctx, address);
-      upsertEnv(ctx.layout.envPath, {
-        MERCHANT_SIGNER_PRIVATE_KEY: contents,
-        MERCHANT_PAYMENT_ADDRESS: payoutAddress,
-      });
+      upsertEnv(ctx.layout.envPath, { MERCHANT_SIGNER_PRIVATE_KEY: contents });
     }
+    ctx.ui.ok(
+      "Signer wallet",
+      encrypted
+        ? "(encrypted, preserved)"
+        : `${shortHex(address)} ${ctx.ui.s.dim("(preserved)")}`,
+    );
     return { applied: false, summary: `signer.key preserved (encrypted=${encrypted})` };
   }
 
   const mode = await pickMode(ctx);
   if (mode === "skip") {
-    return { applied: false, summary: "signer skipped (you'll need to add one before publishing)" };
+    ctx.ui.warn("Signer wallet", "skipped — configure before publishing");
+    return { applied: false, summary: "signer skipped" };
   }
 
   const privateKey = mode === "generate" ? generateSignerKey().privateKey : (mode as Hex);
@@ -50,20 +64,11 @@ export async function stepSigner(ctx: StepContext): Promise<StepOutcome> {
   writeSignerKey(ctx.layout.signerKeyFile, toWrite);
   ctx.config.wallet = { address, encrypted: Boolean(passphrase) };
 
-  // Export the key + payout address to .env so the server's config
-  // loader (packages/connector/src/config/payment.ts) finds them. Without
-  // this, `acc start` fails with "MERCHANT_SIGNER_PRIVATE_KEY is
-  // required". We only export plaintext keys — if the operator chose a
-  // passphrase we keep signer.key encrypted on disk and leave the env
-  // var to be set at deploy time.
   if (!passphrase) {
-    const payoutAddress = await askPaymentAddress(ctx, address);
-    upsertEnv(ctx.layout.envPath, {
-      MERCHANT_SIGNER_PRIVATE_KEY: privateKey,
-      MERCHANT_PAYMENT_ADDRESS: payoutAddress,
-    });
+    upsertEnv(ctx.layout.envPath, { MERCHANT_SIGNER_PRIVATE_KEY: privateKey });
   }
 
+  ctx.ui.ok("Signer wallet", shortHex(address));
   return {
     applied: true,
     summary: `signer.key written (${passphrase ? "encrypted" : "plaintext 0600"}) — address ${address}`,
@@ -77,42 +82,30 @@ async function pickMode(ctx: StepContext): Promise<"generate" | "skip" | Hex> {
     if (HEX_RE.test(seeded)) return seeded as Hex;
     throw new Error(`invalid signer seed: ${seeded}`);
   }
-  const choice = await ctx.prompter.askChoice("Marketplace signer key", [
-    { key: "g", label: "generate a new one" },
-    { key: "i", label: "import an existing 0x hex key" },
-    { key: "s", label: "skip (configure later)" },
-  ]);
+
+  // Default mode: two choices. --advanced gets a third "skip" escape.
+  ctx.ui.section("Signer wallet");
+  ctx.ui.line(
+    `  ${ctx.ui.s.dim("Signs your marketplace skill. Identity only, not money.")}`,
+  );
+  const choices = ctx.advanced
+    ? [
+        { key: "g", label: "auto-generate (recommended)" },
+        { key: "i", label: "paste an existing 0x hex key" },
+        { key: "s", label: "skip — configure later" },
+      ]
+    : [
+        { key: "g", label: "auto-generate (recommended)" },
+        { key: "i", label: "paste an existing 0x hex key" },
+      ];
+  const choice = await ctx.prompter.askChoice("How do you want the signer set up?", choices);
   if (choice === "s") return "skip";
   if (choice === "g") return "generate";
-  const hex = await ctx.prompter.askSecret("Paste 0x-prefixed 32-byte hex private key");
+  const hex = await ctx.prompter.askSecret("Paste private key (0x + 64 hex)");
   if (!HEX_RE.test(hex)) {
     throw new Error("invalid private key format (expected 0x + 64 hex chars)");
   }
   return hex as Hex;
-}
-
-async function askPaymentAddress(
-  ctx: StepContext,
-  signerAddress: string,
-): Promise<string> {
-  const seeded = ctx.seed?.paymentAddress;
-  if (seeded) {
-    if (!ADDR_RE.test(seeded)) {
-      throw new Error(`invalid paymentAddress seed: ${seeded}`);
-    }
-    return seeded;
-  }
-  // Payout address = where settled stablecoin lands. Production deploys
-  // should use a cold wallet, not the signer, but for dev/smoke-test
-  // defaulting to the signer address is fine.
-  const entered = await ctx.prompter.ask(
-    "Payout wallet address (receives stablecoin)",
-    {
-      default: signerAddress,
-      validate: (v) => (ADDR_RE.test(v) ? null : "must be 0x + 40 hex chars"),
-    },
-  );
-  return entered;
 }
 
 function deriveAddress(privateKey: string): `0x${string}` {

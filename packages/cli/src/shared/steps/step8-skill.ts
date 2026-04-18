@@ -23,6 +23,7 @@ above and this body, then run \`acc publish\` to submit to the marketplace.
 
 export async function stepSkill(ctx: StepContext): Promise<StepOutcome> {
   if (existsSync(ctx.layout.skillMd) && !ctx.force) {
+    ctx.ui.ok("Skill template", `${ctx.layout.skillMd} ${ctx.ui.s.dim("(preserved)")}`);
     return {
       applied: false,
       summary: `skill.md preserved (already at ${ctx.layout.skillMd})`,
@@ -31,5 +32,6 @@ export async function stepSkill(ctx: StepContext): Promise<StepOutcome> {
   const content = buildSkillMd(TEMPLATE_FRONTMATTER, TEMPLATE_BODY);
   writeFileSync(ctx.layout.skillMd, content, { mode: 0o644, encoding: "utf-8" });
   ctx.config.skillMdPath = ctx.layout.skillMd;
+  ctx.ui.ok("Skill template", ctx.layout.skillMd);
   return { applied: true, summary: `wrote skill template to ${ctx.layout.skillMd}` };
 }
