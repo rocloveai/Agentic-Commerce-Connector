@@ -1,5 +1,29 @@
 
 
+## [0.8.1] - 2026-04-18
+
+Internal cleanup. No behaviour change; all 323 connector + 85 CLI tests
+still green.
+
+### Removed
+
+Session-2 dead code from the embedded-iframe / Token-Exchange
+experiment that got abandoned once the real root-cause (the
+`expiring=1` parameter) was found:
+
+- `packages/install-relay/src/routes/embed.ts`
+- `packages/install-relay/src/routes/token-exchange.ts`
+- `/embed` and `/auth/shopify/token-exchange` route registrations in
+  `install-relay/src/server.ts`
+- `packages/connector/src/adapters/shopify/oauth/id-token-verify.ts`
+- `exchangeIdTokenForAccessToken` function in
+  `connector/src/adapters/shopify/oauth/token-exchange.ts`
+- Corresponding re-exports from `oauth/index.ts`
+
+These modules were never called on a live install once the relay was
+switched to classic OAuth + `expiring=1` in v0.7. Keeping them around
+risked leading future readers down the wrong path.
+
 ## [0.8.0] - 2026-04-18
 
 One-command VPS deploy. Merchants can now take a blank Ubuntu/Debian

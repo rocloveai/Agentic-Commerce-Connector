@@ -1,6 +1,6 @@
 {
   "name": "@acc/install-relay",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "description": "Shared-app OAuth relay for Agentic Commerce Connector. Accepts Shopify OAuth callbacks on behalf of all merchants running ACC; relays tokens to their CLI via short-lived pair codes.",
   "type": "module",
@@ -14,7 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@acc/connector": "^0.8.0"
+    "@acc/connector": "^0.8.1"
   },
   "devDependencies": {
     "@types/node": "^22.13.4",

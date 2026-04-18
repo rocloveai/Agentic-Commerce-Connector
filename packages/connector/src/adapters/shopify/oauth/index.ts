@@ -3,16 +3,12 @@
 
 export {
   exchangeCodeForToken,
-  exchangeIdTokenForAccessToken,
   refreshAccessToken,
 } from "./token-exchange.js";
 export type {
   TokenExchangeResponse,
   TokenExchangeOptions,
 } from "./token-exchange.js";
-
-export { verifyIdToken } from "./id-token-verify.js";
-export type { IdTokenClaims } from "./id-token-verify.js";
 
 export { refreshViaRelay, RelayRefreshRejected } from "./relay-refresh.js";
 export type { RelayRefreshOptions, RelayRefreshResult } from "./relay-refresh.js";

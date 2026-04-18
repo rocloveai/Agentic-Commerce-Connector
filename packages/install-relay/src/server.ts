@@ -13,8 +13,6 @@ import { handlePairNew } from "./routes/pair-new.js";
 import { handleInstallStart } from "./routes/install-start.js";
 import { handleCallback } from "./routes/callback.js";
 import { handlePoll } from "./routes/poll.js";
-import { handleEmbed } from "./routes/embed.js";
-import { handleTokenExchange } from "./routes/token-exchange.js";
 import { handleRefresh } from "./routes/refresh.js";
 import { sendJson } from "./routes/_http.js";
 
@@ -116,18 +114,6 @@ async function handle(
     return;
   }
 
-  if (path === "/embed" && method === "GET") {
-    await handleEmbed(req, res, config);
-    return;
-  }
-
-  if (path === "/auth/shopify/token-exchange" && method === "POST") {
-    await handleTokenExchange(req, res, config, store);
-    return;
-  }
-
-  // Legacy — kept so classic OAuth flow (pre-cutoff apps, grandfathered)
-  // still works if anyone hits it. New installs go through /embed.
   if (path === "/auth/shopify/callback" && method === "GET") {
     await handleCallback(req, res, config, store);
     return;

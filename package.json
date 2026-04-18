@@ -1,6 +1,6 @@
 {
   "name": "agentic-commerce-connector",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "description": "Open-source UCP/1.0 data-layer wrapper for traditional e-commerce + agent-facing skill toolchain",
   "license": "MIT",
