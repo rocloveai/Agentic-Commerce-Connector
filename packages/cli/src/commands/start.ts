@@ -32,6 +32,21 @@ export async function runStart(args: readonly string[]): Promise<void> {
 
   const { startServer } = await import("@acc/connector/server");
   await startServer();
+
+  // Block until SIGINT/SIGTERM. Under Node, `createServer().listen()`
+  // holds the event loop open via its listening socket, so this wouldn't
+  // be needed — but Bun's compiled runtime drains the loop and exits once
+  // the top-level async chain completes, even while an HTTP server is
+  // actively listening. Hanging on a never-resolving Promise keeps the
+  // process alive until a signal arrives.
+  await new Promise<void>((resolve) => {
+    const stop = (sig: string) => {
+      process.stderr.write(`\n[acc] ${sig} received, shutting down.\n`);
+      resolve();
+    };
+    process.once("SIGINT", () => stop("SIGINT"));
+    process.once("SIGTERM", () => stop("SIGTERM"));
+  });
 }
 
 function parseFlags(args: readonly string[]): Map<string, string> {
