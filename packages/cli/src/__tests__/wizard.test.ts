@@ -26,8 +26,9 @@ const SEED = {
   selfUrl: "https://acc.example.com",
   registry: "https://api.siliconretail.com",
   chainId: 1,
-  shopifyClientId: "id-stub",
-  shopifyClientSecret: "secret-stub",
+  shopifyStoreUrl: "xstore-test.myshopify.com",
+  shopifyAdminToken: "shpat_test_admin_token",
+  shopifyStorefrontToken: "test_storefront_token",
   signer: "generate" as const,
 };
 
@@ -78,8 +79,9 @@ describe("runInit — non-interactive seed (full 8-step path)", () => {
     await runInit([`--data-dir=${dataDir}`], { io: queueIO([]), seed: SEED });
     const env = readFileSync(join(dataDir, ".env"), "utf-8");
     expect(env).toContain("SELF_URL=https://acc.example.com");
-    expect(env).toContain("SHOPIFY_CLIENT_ID=id-stub");
-    expect(env).toContain("SHOPIFY_CLIENT_SECRET=secret-stub");
+    expect(env).toContain("SHOPIFY_STORE_URL=https://xstore-test.myshopify.com");
+    expect(env).toContain("SHOPIFY_ADMIN_TOKEN=shpat_test_admin_token");
+    expect(env).toContain("SHOPIFY_STOREFRONT_TOKEN=test_storefront_token");
     expect(env).toMatch(/ACC_ENCRYPTION_KEY=[0-9a-f]{64}/);
   });
 

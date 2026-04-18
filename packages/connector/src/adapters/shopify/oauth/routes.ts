@@ -255,7 +255,9 @@ export async function handleCallback(
     }
   }
 
-  // 9. Persist — one write including storefront token + whatever scopes we got.
+  // 9. Persist — one write including storefront token, expires_at, and
+  //    refresh_token. For pre-Dec-2025 non-expiring tokens, expires_at and
+  //    refresh_token are null and the adapter layer skips refresh.
   await deps.installationStore.save({
     shopDomain: shop,
     adminToken: token.accessToken,
@@ -263,6 +265,8 @@ export async function handleCallback(
     scopes: token.scope,
     installedAt: now(),
     uninstalledAt: null,
+    tokenExpiresAt: token.expiresAt,
+    refreshToken: token.refreshToken,
   });
 
   // 10. Log non-fatal issues so operators see them in startup logs.

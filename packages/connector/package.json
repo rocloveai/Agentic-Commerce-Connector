@@ -1,6 +1,6 @@
 {
   "name": "@acc/connector",
-  "version": "0.4.1",
+  "version": "0.7.0",
   "type": "module",
   "description": "Agentic Commerce Connector — UCP/1.0 façade + platform adapters",
   "license": "MIT",
@@ -19,6 +19,10 @@
     "./sqlite": {
       "types": "./build/services/db/sqlite.d.ts",
       "default": "./build/services/db/sqlite.js"
+    },
+    "./shopify-oauth": {
+      "types": "./build/adapters/shopify/oauth/index.d.ts",
+      "default": "./build/adapters/shopify/oauth/index.js"
     }
   },
   "files": [
@@ -33,7 +37,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@acc/skill-spec": "^0.4.1",
+    "@acc/skill-spec": "^0.7.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^11.10.0",

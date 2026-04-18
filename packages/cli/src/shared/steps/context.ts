@@ -21,8 +21,12 @@ export interface NonInteractiveSeed {
   readonly selfUrl: string;
   readonly registry: string;
   readonly chainId: number;
-  readonly shopifyClientId: string;
-  readonly shopifyClientSecret: string;
+  /** Merchant's Shopify store domain, e.g. "my-shop.myshopify.com". */
+  readonly shopifyStoreUrl: string;
+  /** Admin API access token (shpat_…) from the merchant's custom app. */
+  readonly shopifyAdminToken: string;
+  /** Storefront API access token from the same custom app. */
+  readonly shopifyStorefrontToken: string;
   /** "generate" | "skip" | hex-private-key */
   readonly signer: string;
   /** Optional passphrase when signer should be encrypted at rest. */

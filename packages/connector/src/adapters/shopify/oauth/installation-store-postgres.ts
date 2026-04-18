@@ -22,8 +22,13 @@ CREATE TABLE IF NOT EXISTS shopify_installations (
   scopes          TEXT NOT NULL,
   installed_at    BIGINT NOT NULL,
   uninstalled_at  BIGINT,
-  key_version     INTEGER NOT NULL DEFAULT 1
+  key_version     INTEGER NOT NULL DEFAULT 1,
+  token_expires_at BIGINT,
+  refresh_token   TEXT
 );
+-- Idempotent column additions for v0.4.x schema.
+ALTER TABLE shopify_installations ADD COLUMN IF NOT EXISTS token_expires_at BIGINT;
+ALTER TABLE shopify_installations ADD COLUMN IF NOT EXISTS refresh_token TEXT;
 `;
 
 interface Row {
@@ -34,6 +39,8 @@ interface Row {
   readonly installed_at: string | number;
   readonly uninstalled_at: string | number | null;
   readonly key_version: number;
+  readonly token_expires_at: string | number | null;
+  readonly refresh_token: string | null;
 }
 
 export interface PostgresInstallationStoreOptions {
@@ -62,6 +69,11 @@ export async function createPostgresInstallationStore(
       installedAt: Number(row.installed_at),
       uninstalledAt:
         row.uninstalled_at === null ? null : Number(row.uninstalled_at),
+      tokenExpiresAt:
+        row.token_expires_at === null ? null : Number(row.token_expires_at),
+      refreshToken: row.refresh_token
+        ? decryptToken(row.refresh_token, opts.encryptionKey)
+        : null,
     };
   }
 
@@ -77,15 +89,17 @@ export async function createPostgresInstallationStore(
     async save(installation: ShopInstallation): Promise<void> {
       await opts.pool.query(
         `INSERT INTO shopify_installations
-           (shop_domain, admin_token, storefront_token, scopes, installed_at, uninstalled_at, key_version)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+           (shop_domain, admin_token, storefront_token, scopes, installed_at, uninstalled_at, key_version, token_expires_at, refresh_token)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (shop_domain) DO UPDATE SET
-           admin_token      = excluded.admin_token,
-           storefront_token = excluded.storefront_token,
-           scopes           = excluded.scopes,
-           installed_at     = excluded.installed_at,
-           uninstalled_at   = excluded.uninstalled_at,
-           key_version      = excluded.key_version`,
+           admin_token       = excluded.admin_token,
+           storefront_token  = excluded.storefront_token,
+           scopes            = excluded.scopes,
+           installed_at      = excluded.installed_at,
+           uninstalled_at    = excluded.uninstalled_at,
+           key_version       = excluded.key_version,
+           token_expires_at  = excluded.token_expires_at,
+           refresh_token     = excluded.refresh_token`,
         [
           installation.shopDomain,
           encryptToken(installation.adminToken, opts.encryptionKey),
@@ -96,6 +110,10 @@ export async function createPostgresInstallationStore(
           installation.installedAt,
           installation.uninstalledAt,
           1,
+          installation.tokenExpiresAt,
+          installation.refreshToken === null
+            ? null
+            : encryptToken(installation.refreshToken, opts.encryptionKey),
         ],
       );
     },

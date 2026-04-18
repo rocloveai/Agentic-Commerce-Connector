@@ -59,13 +59,17 @@ async function openBun(path: string): Promise<SqliteDatabase> {
       return {
         run(params) {
           if (params === undefined) q.run();
-          else q.run(params as never);
+          else q.run(normalizeBunParams(params) as never);
         },
         get(params) {
-          return params === undefined ? q.get() : q.get(params as never);
+          return params === undefined
+            ? q.get()
+            : q.get(normalizeBunParams(params) as never);
         },
         all(params) {
-          return params === undefined ? q.all() : q.all(params as never);
+          return params === undefined
+            ? q.all()
+            : q.all(normalizeBunParams(params) as never);
         },
       };
     },
@@ -75,6 +79,26 @@ async function openBun(path: string): Promise<SqliteDatabase> {
       db.close();
     },
   };
+}
+
+/**
+ * bun:sqlite requires object keys to carry the `@` / `:` / `$` prefix when
+ * binding named parameters. better-sqlite3 accepts bare keys. All SQL in this
+ * codebase uses the `@name` convention, so we normalize bare keys by prepending
+ * `@`. Keys that already carry a recognized prefix pass through untouched.
+ * Arrays (positional bindings) and primitives pass through as-is.
+ */
+function normalizeBunParams(params: unknown): unknown {
+  if (!params || typeof params !== "object" || Array.isArray(params)) {
+    return params;
+  }
+  const source = params as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(source)) {
+    const first = k.charAt(0);
+    out[first === "@" || first === ":" || first === "$" ? k : `@${k}`] = v;
+  }
+  return out;
 }
 
 interface BunDb {

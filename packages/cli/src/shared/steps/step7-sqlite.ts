@@ -19,7 +19,9 @@ CREATE TABLE IF NOT EXISTS shopify_installations (
   scopes          TEXT NOT NULL,
   installed_at    INTEGER NOT NULL,
   uninstalled_at  INTEGER,
-  key_version     INTEGER NOT NULL DEFAULT 1
+  key_version     INTEGER NOT NULL DEFAULT 1,
+  token_expires_at INTEGER,
+  refresh_token   TEXT
 );
 `;
 
@@ -29,6 +31,21 @@ export async function stepSqlite(ctx: StepContext): Promise<StepOutcome> {
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
     db.exec(SCHEMA_SQL);
+    // Idempotent v2 migration for databases created by v0.4.x.
+    const cols = db
+      .prepare("PRAGMA table_info(shopify_installations)")
+      .all() as Array<{ readonly name: string }>;
+    const names = new Set(cols.map((c) => c.name));
+    if (!names.has("token_expires_at")) {
+      db.exec(
+        "ALTER TABLE shopify_installations ADD COLUMN token_expires_at INTEGER",
+      );
+    }
+    if (!names.has("refresh_token")) {
+      db.exec(
+        "ALTER TABLE shopify_installations ADD COLUMN refresh_token TEXT",
+      );
+    }
   } finally {
     db.close();
   }

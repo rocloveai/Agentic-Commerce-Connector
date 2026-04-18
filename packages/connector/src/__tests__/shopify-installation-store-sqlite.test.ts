@@ -33,6 +33,8 @@ function makeInstallation(partial: Partial<ShopInstallation> = {}): ShopInstalla
     scopes: ["read_products", "write_orders"],
     installedAt: 1_700_000_000_000,
     uninstalledAt: null,
+    tokenExpiresAt: null,
+    refreshToken: null,
     ...partial,
   };
 }

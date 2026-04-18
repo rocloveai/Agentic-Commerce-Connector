@@ -40,7 +40,7 @@ describe("dispatch", () => {
   });
 
   it("returns 0 on a placeholder command", async () => {
-    const code = await dispatch(["start"]);
+    const code = await dispatch(["status"]);
     expect(code).toBe(0);
     const output = stdoutWrite.mock.calls.map((c) => String(c[0])).join("");
     expect(output).toContain("not implemented yet");

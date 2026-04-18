@@ -17,6 +17,21 @@ export interface ShopInstallation {
   readonly scopes: readonly string[];
   readonly installedAt: number;
   readonly uninstalledAt: number | null;
+  /**
+   * Unix-seconds when `adminToken` expires. `null` for legacy (pre-
+   * Dec-2025) non-expiring tokens that some grandfathered apps still hold.
+   * For any token obtained via the shared-app install flow, this is set
+   * to roughly `installedAt/1000 + 3600` (Shopify currently issues 1-hour
+   * access tokens).
+   */
+  readonly tokenExpiresAt: number | null;
+  /**
+   * Shopify refresh token. Used by the adapter layer to mint a fresh
+   * access token before the current one expires. `null` for legacy non-
+   * expiring tokens. Rotates on every refresh — callers must persist the
+   * new value atomically.
+   */
+  readonly refreshToken: string | null;
 }
 
 /**

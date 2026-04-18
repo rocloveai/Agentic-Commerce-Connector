@@ -317,12 +317,14 @@ describe("handleCallback", () => {
     expect(tokenExchangeCall.url).toBe(
       `https://${SHOP}/admin/oauth/access_token`,
     );
-    const sentBody = JSON.parse(String(tokenExchangeCall.init?.body));
-    expect(sentBody).toEqual({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      code: "authcode_xyz",
-    });
+    // Shopify Dec-2025 policy: body is application/x-www-form-urlencoded and
+    // must include `expiring=1` to get an expiring offline token that Admin
+    // API accepts. Decoding via URLSearchParams gives us a flat map.
+    const sentBody = new URLSearchParams(String(tokenExchangeCall.init?.body));
+    expect(sentBody.get("client_id")).toBe(CLIENT_ID);
+    expect(sentBody.get("client_secret")).toBe(CLIENT_SECRET);
+    expect(sentBody.get("code")).toBe("authcode_xyz");
+    expect(sentBody.get("expiring")).toBe("1");
 
     // Subsequent calls all hit the Admin GraphQL endpoint.
     for (const call of harness.fetchCalls.slice(1)) {

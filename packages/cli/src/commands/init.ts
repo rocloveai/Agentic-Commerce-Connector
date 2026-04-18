@@ -95,14 +95,14 @@ export async function runInit(
       readonly [string, (c: StepContext) => Promise<{ summary: string }>]
     > =
       action === "shopify-only"
-        ? [["6/8 Shopify Partners creds", stepShopify]]
+        ? [["6/8 Shopify custom-app tokens", stepShopify]]
         : [
             ["1/8 Preflight", stepPreflight],
             ["2/8 Data directory", stepDataDir],
             ["3/8 Public URL", stepSelfUrl],
             ["4/8 Encryption key", stepEncKey],
             ["5/8 Marketplace signer", stepSigner],
-            ["6/8 Shopify Partners creds", stepShopify],
+            ["6/8 Shopify custom-app tokens", stepShopify],
             ["7/8 SQLite migration", stepSqlite],
             ["8/8 Skill template", stepSkill],
           ];
@@ -149,7 +149,7 @@ async function resolveReentrantAction(
     `Found existing config at ${layout.configPath}. What next?`,
     [
       { key: "a", label: "keep as-is (exit)" },
-      { key: "b", label: "update Shopify credentials only" },
+      { key: "b", label: "update Shopify tokens only" },
       { key: "c", label: "start over (backs up current)" },
       { key: "d", label: "cancel" },
     ],

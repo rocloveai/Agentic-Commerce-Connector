@@ -81,6 +81,31 @@ export function registerUcpDeps(deps: UcpDeps): void {
   ucpDeps = deps;
 }
 
+/**
+ * Lazy UCP deps resolver. Used by OAuth-only mode where the adapter pair
+ * can't exist at boot (no tokens until a merchant installs). The resolver
+ * is called on every `/ucp/v1/*` request; it should cache internally.
+ *
+ * Return `{ kind: "no-installation" }` to make the portal emit a friendly
+ * 409 pointing the caller at the install URL — instead of the generic
+ * 503 that bare `registerUcpDeps`-never-called would produce.
+ *
+ * Precedence: `ucpDeps` (eager) wins over `ucpDepsResolver` (lazy). This
+ * lets the non-OAuth path (manual Shopify / WooCommerce) continue working
+ * unchanged.
+ */
+export type UcpDepsResolverResult =
+  | { readonly kind: "ready"; readonly deps: UcpDeps; readonly shopDomain?: string }
+  | { readonly kind: "no-installation"; readonly installHint?: string };
+
+let ucpDepsResolver: (() => Promise<UcpDepsResolverResult>) | null = null;
+
+export function registerUcpDepsResolver(
+  resolver: () => Promise<UcpDepsResolverResult>,
+): void {
+  ucpDepsResolver = resolver;
+}
+
 // ── Shopify OAuth router (registered only in OAuth mode) ────────────────────
 
 let shopifyOAuthRouter: ShopifyOAuthRouter | null = null;
@@ -415,11 +440,25 @@ async function handleRequest(
 
   // ── UCP/1.0 façade ────────────────────────────────────────────────────────
   if (path.startsWith("/ucp/v1/")) {
-    if (!ucpDeps) {
+    let deps: UcpDeps | null = ucpDeps;
+    if (!deps && ucpDepsResolver) {
+      const result = await ucpDepsResolver();
+      if (result.kind === "no-installation") {
+        sendJson(res, 409, {
+          error: "No merchant installation active yet.",
+          hint:
+            result.installHint ??
+            "Complete the Shopify OAuth install flow at /auth/shopify/install?shop=<your-shop>.myshopify.com before calling UCP endpoints.",
+        });
+        return;
+      }
+      deps = result.deps;
+    }
+    if (!deps) {
       sendJson(res, 503, { error: "UCP deps not registered." });
       return;
     }
-    const handled = await handleUcpRoute(path, req, res, ucpDeps);
+    const handled = await handleUcpRoute(path, req, res, deps);
     if (handled) return;
     send404(res);
     return;
