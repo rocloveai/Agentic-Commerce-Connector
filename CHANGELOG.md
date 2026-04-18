@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.7.2] - 2026-04-18
+
+Follow-up UX polish based on first real-user feedback.
+
+### Added
+- **Arrow-key choice selection** for every `askChoice` prompt in
+  `acc init` — `↑` / `↓` move, `Enter` commits, number keys (`1`..`N`)
+  jump directly, `Ctrl+C` aborts. Non-TTY input (tests, scripted
+  pipes) still falls back to letter keys, so existing PromptIO mocks
+  keep working.
+- **Signer step now shows full wallet details after generate**:
+  ```
+  ✓  Signer wallet         generated
+     address     0xB026B6B9F2C41ED82D3DeF31ACe31FDe18BCF28e
+     key file    /home/acc/.acc/keys/signer.key  (mode 0600)
+     ⚠  Back this file up off-server before going live.
+  ```
+  Previous behaviour printed only a truncated address — merchants had
+  no visible handle to copy for backup.
+
+### Changed
+- `install.sh` post-install message: "8-step setup wizard" → "setup
+  wizard (browser-based Shopify connect)" to match the current flow.
+
 ## [0.7.1] - 2026-04-18
 
 UX polish for `acc init`. No behavioural changes; merchants see a much

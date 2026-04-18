@@ -150,7 +150,7 @@ main() {
     msg "✓ Installed: $("$INSTALL_DIR/acc" version 2>/dev/null || printf 'acc (%s)\n' "$tag")"
     msg ""
     msg "Next:"
-    msg "  acc init        # 8-step setup wizard"
+    msg "  acc init        # setup wizard (browser-based Shopify connect)"
     msg "  acc start       # boot the connector"
     msg "  acc doctor      # diagnose issues"
 }

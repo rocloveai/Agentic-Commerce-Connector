@@ -42,10 +42,14 @@ export async function stepSigner(ctx: StepContext): Promise<StepOutcome> {
     }
     ctx.ui.ok(
       "Signer wallet",
-      encrypted
-        ? "(encrypted, preserved)"
-        : `${shortHex(address)} ${ctx.ui.s.dim("(preserved)")}`,
+      encrypted ? "encrypted (preserved)" : "preserved",
     );
+    if (!encrypted) {
+      ctx.ui.line(`     ${ctx.ui.s.dim("address    ")} ${address}`);
+      ctx.ui.line(
+        `     ${ctx.ui.s.dim("key file   ")} ${ctx.layout.signerKeyFile}`,
+      );
+    }
     return { applied: false, summary: `signer.key preserved (encrypted=${encrypted})` };
   }
 
@@ -68,7 +72,19 @@ export async function stepSigner(ctx: StepContext): Promise<StepOutcome> {
     upsertEnv(ctx.layout.envPath, { MERCHANT_SIGNER_PRIVATE_KEY: privateKey });
   }
 
-  ctx.ui.ok("Signer wallet", shortHex(address));
+  ctx.ui.ok("Signer wallet", "generated");
+  // Show the full address + key file path + back-up nudge. Users can't
+  // recover a marketplace identity without the private key file; if we
+  // only print a truncated address, they have no idea what to back up.
+  ctx.ui.line(`     ${ctx.ui.s.dim("address    ")} ${address}`);
+  ctx.ui.line(
+    `     ${ctx.ui.s.dim("key file   ")} ${ctx.layout.signerKeyFile}  ${ctx.ui.s.dim("(mode 0600)")}`,
+  );
+  if (!passphrase) {
+    ctx.ui.line(
+      `     ${ctx.ui.s.yellow("⚠")}  ${ctx.ui.s.dim("Back this file up off-server (1Password / paper) before going live.")}`,
+    );
+  }
   return {
     applied: true,
     summary: `signer.key written (${passphrase ? "encrypted" : "plaintext 0600"}) — address ${address}`,
