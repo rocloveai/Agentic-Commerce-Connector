@@ -85,19 +85,32 @@ export async function stepShopify(ctx: StepContext): Promise<StepOutcome> {
 
   ctx.ui.section("Connect your Shopify store");
 
-  // 1. Request a pair code from the relay.
-  const pair = await createPair(relayUrl);
+  // 1. Ask for the shop domain up front. This gives the user a beat
+  //    between "payout confirmed" and "browser opens", lets us embed the
+  //    shop into the install URL so the relay skips its own form, and
+  //    surfaces typos immediately instead of 30 seconds later in the
+  //    browser.
+  const shopDomain = await askShopDomain(ctx);
 
-  // 2. Show URL in a box + try to auto-open the browser.
-  ctx.ui.highlightUrl(pair.install_url);
-  const opened = await openBrowser(pair.install_url).catch(() => false);
+  // 2. Request a pair code from the relay, embed shop in the install URL.
+  const pair = await createPair(relayUrl);
+  const installUrlWithShop = appendShop(pair.install_url, shopDomain);
+
+  // 3. Show URL, tell the user we're about to open the browser, then do it.
+  ctx.ui.highlightUrl(installUrlWithShop);
+  ctx.ui.line(`  ${ctx.ui.s.dim("Opening in your browser…")}`);
+  ctx.ui.line("");
+  // Small breath before the browser takes over, so the user registers what
+  // just flashed up on screen. openBrowser returns fast anyway.
+  await new Promise((r) => setTimeout(r, 800));
+  const opened = await openBrowser(installUrlWithShop).catch(() => false);
   if (!opened) {
     ctx.ui.line(
-      `  ${ctx.ui.s.dim("Browser didn't open automatically — copy the URL above manually.")}`,
+      `  ${ctx.ui.s.yellow("⚠")}  ${ctx.ui.s.dim("Browser didn't open automatically — copy the URL above manually.")}`,
     );
   }
 
-  // 3. Poll until tokens are ready, with a live countdown spinner.
+  // 4. Poll until tokens are ready, with a live countdown spinner.
   const ready = await pollForTokens(ctx, pair.poll_url, {
     intervalMs: POLL_INTERVAL_MS,
     maxWaitMs: Math.min(DEFAULT_MAX_WAIT_MS, pair.expires_in * 1000),
@@ -213,6 +226,38 @@ function normaliseShopDomain(raw: string): string {
     .trim()
     .replace(/^https?:\/\//, "")
     .replace(/\/+$/, "");
+}
+
+const SHOP_RE = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/i;
+
+/**
+ * Prompt for the merchant's Shopify shop domain. Accepts plain
+ * "my-shop.myshopify.com" or a full URL and normalises either way.
+ * Re-asks on malformed input so we never build a bad install URL.
+ */
+async function askShopDomain(ctx: StepContext): Promise<string> {
+  const raw = await ctx.prompter.ask(
+    "Shopify store domain (e.g. my-shop.myshopify.com)",
+    {
+      validate: (v) => {
+        const normalised = normaliseShopDomain(v);
+        if (SHOP_RE.test(normalised)) return null;
+        return "must end in .myshopify.com";
+      },
+    },
+  );
+  return normaliseShopDomain(raw);
+}
+
+/**
+ * Append `&shop=<domain>` to the install URL so the relay's /install-start
+ * route skips its HTML shop-prompt and redirects straight to Shopify's
+ * OAuth authorize page. The merchant types the shop once, in their
+ * terminal.
+ */
+function appendShop(installUrl: string, shopDomain: string): string {
+  const sep = installUrl.includes("?") ? "&" : "?";
+  return `${installUrl}${sep}shop=${encodeURIComponent(shopDomain)}`;
 }
 
 async function writeInstallation(

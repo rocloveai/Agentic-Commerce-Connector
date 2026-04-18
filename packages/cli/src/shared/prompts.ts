@@ -195,11 +195,8 @@ async function arrowSelect(
 ): Promise<string> {
   const stdin = process.stdin;
   const stdout = process.stdout;
-  const initialIndex = 0;
-  let cursor = initialIndex;
+  let cursor = 0;
 
-  // First draw: question + list. We track how many lines we wrote so we can
-  // clear-and-redraw on each keystroke.
   stdout.write(`${question}\n`);
   const render = (): void => {
     for (let i = 0; i < choices.length; i++) {
@@ -210,16 +207,14 @@ async function arrowSelect(
       stdout.write(`  ${marker}  ${body}\n`);
     }
   };
+  // Walk up N lines + clear each, leaving cursor at the first line of the
+  // (now empty) list at column 0. Simpler + more reliable than the earlier
+  // "move up N, then move down + clear" approach.
   const clearList = (): void => {
-    // Move up N lines + clear each.
-    stdout.write(`${ESC}[${choices.length}A`);
     for (let i = 0; i < choices.length; i++) {
-      stdout.write(`${ESC}[2K`);
-      if (i < choices.length - 1) stdout.write(`${ESC}[1B`);
+      stdout.write(`${ESC}[1A${ESC}[2K`);
     }
-    // Cursor is now on the last cleared line. Move back to top so next
-    // render rewrites in place.
-    stdout.write(`${ESC}[${choices.length - 1}A\r`);
+    stdout.write("\r");
   };
   render();
   stdout.write(HIDE_CURSOR);
@@ -243,32 +238,27 @@ async function arrowSelect(
         stdout.write("\n");
         process.exit(130);
       }
-      // Enter: accept current.
+      // Enter: accept current. Wipe the menu and print a single summary
+      // line in its place. `\x1b[J` erases from cursor to end-of-display,
+      // cleaning up any lines below that clearList didn't touch.
       if (s === "\r" || s === "\n") {
         cleanup();
-        // Clear the list + re-draw a single summary line so the choice
-        // isn't left half-rendered.
         clearList();
-        for (let i = 0; i < choices.length; i++) {
-          stdout.write(`${ESC}[2K\n`);
-        }
-        stdout.write(`${ESC}[${choices.length}A`);
+        stdout.write(`${ESC}[J`);
         stdout.write(
           `  ${COLOR_CYAN}❯${COLOR_RESET}  ${choices[cursor].label}\n`,
         );
         resolve(choices[cursor].key);
         return;
       }
-      // Arrow keys come in as ESC [ A/B/C/D.
+      // Arrow keys come in as ESC [ A/B/C/D; j/k are vim-style fallbacks.
       if (s === "\x1b[A" || s === "k") {
-        // Up.
         cursor = (cursor - 1 + choices.length) % choices.length;
         clearList();
         render();
         return;
       }
       if (s === "\x1b[B" || s === "j") {
-        // Down.
         cursor = (cursor + 1) % choices.length;
         clearList();
         render();

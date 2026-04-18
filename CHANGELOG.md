@@ -1,4 +1,26 @@
-# Changelog
+
+
+## [0.7.3] - 2026-04-18
+
+Second-round UX fixes after live testing v0.7.2.
+
+### Fixed
+- **Arrow-select rendering**: selected choice no longer duplicates after
+  Enter (previously the arrow-cursor line was echoed twice on commit).
+  `clearList` simplified to walk-up-and-clear; menu teardown now uses
+  `\x1b[J` to wipe everything below in a single op.
+
+### Changed
+- **Shop domain moved into CLI**: `acc init` now prompts
+  `Shopify store domain (e.g. my-shop.myshopify.com)` in the terminal
+  before opening the browser, and embeds `&shop=<domain>` in the
+  install URL. The merchant types their shop once, in their terminal,
+  and the browser goes straight to Shopify's OAuth authorize page —
+  no intermediate HTML form on `install.xagenpay.com`.
+- **Browser-open transition**: brief "Opening in your browser…" message
+  + 800 ms pause between showing the URL box and spawning the browser,
+  so the user has a beat to notice what's happening before their browser
+  takes focus.
 
 ## [0.7.2] - 2026-04-18
 
